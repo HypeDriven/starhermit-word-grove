@@ -1,0 +1,3 @@
+name=Word Grove
+launch=index.html
+server=server.js

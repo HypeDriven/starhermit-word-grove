@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e4a2a">
+<title>Word Grove</title>
+<meta name="description" content="Swipe through a letter wheel to grow a crossword grove.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="app">
+  <!-- 3D grove scene; never the only UI -->
+  <canvas id="scene-canvas" aria-hidden="true"></canvas>
+  <div id="wheel-layer" aria-hidden="false"></div>
+
+  <!-- Live regions for screen readers -->
+  <div id="live-polite" class="sr-only" aria-live="polite" role="status"></div>
+  <div id="live-assertive" class="sr-only" aria-live="assertive" role="alert"></div>
+  <div id="captions" class="sr-only" aria-live="polite"></div>
+
+  <main id="screens">
+    <!-- ======================= TITLE ======================= -->
+    <section class="screen" id="screen-title" data-title="Word Grove" hidden>
+      <div class="title-hero">
+        <h1 class="game-logo">Word <span>Grove</span></h1>
+        <p class="tagline">Plant words. Grow a garden.</p>
+      </div>
+      <nav class="title-menu" aria-label="Main menu">
+        <button class="btn btn-primary btn-big" id="btn-play">Play</button>
+        <div class="title-grid">
+          <button class="btn card-btn" id="btn-daily"><strong>Daily</strong><span id="daily-sub">One grove per day</span></button>
+          <button class="btn card-btn" id="btn-journey"><strong>Journey</strong><span id="journey-sub">6 groves · 48 stages</span></button>
+          <button class="btn card-btn" id="btn-practice"><strong>Practice</strong><span>Unranked · undo allowed</span></button>
+          <button class="btn card-btn" id="btn-challenge"><strong>Challenge</strong><span>Move &amp; time trials</span></button>
+          <button class="btn card-btn" id="btn-chase"><strong>Score chase</strong><span>Share a seed, compare</span></button>
+          <button class="btn card-btn" id="btn-learn"><strong>Learn</strong><span id="learn-sub">How to play</span></button>
+        </div>
+      </nav>
+      <div class="title-footer">
+        <button class="btn btn-ghost" id="btn-theme">Theme: <span id="theme-name">Dawn</span></button>
+        <button class="btn btn-ghost" id="btn-settings">Settings</button>
+        <button class="btn btn-ghost" id="btn-help">Help</button>
+      </div>
+      <p class="profile-line">Gardener: <button class="linklike" id="btn-profile-name">Gardener</button> · <span id="flowers-count">0</span> blooms</p>
+    </section>
+
+    <!-- ======================= JOURNEY MAP ======================= -->
+    <section class="screen" id="screen-journey" data-title="Journey" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost back-btn" data-back>← Back</button>
+        <h2>Journey</h2>
+      </header>
+      <div id="journey-map" class="journey-map" role="list"></div>
+    </section>
+
+    <!-- ======================= CHALLENGES ======================= -->
+    <section class="screen" id="screen-challenges" data-title="Challenges" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost back-btn" data-back>← Back</button>
+        <h2>Challenges</h2>
+      </header>
+      <div id="challenge-list" class="challenge-list" role="list"></div>
+    </section>
+
+    <!-- ======================= SCORE CHASE ======================= -->
+    <section class="screen" id="screen-chase" data-title="Score chase" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost back-btn" data-back>← Back</button>
+        <h2>Score chase</h2>
+      </header>
+      <div class="panel narrow">
+        <p>Play the same grove as a friend and compare scores. Enter a seed code, or start a fresh one and share its code.</p>
+        <form id="chase-form" class="row-form">
+          <label for="chase-seed">Seed code</label>
+          <input id="chase-seed" type="text" inputmode="text" autocomplete="off" placeholder="WG-XXXXXXX or any word" maxlength="24">
+          <button class="btn btn-primary" type="submit">Play seed</button>
+        </form>
+        <button class="btn" id="btn-chase-random">New random seed</button>
+        <div id="chase-board" class="board" aria-label="Score chase leaderboard"></div>
+      </div>
+    </section>
+
+    <!-- ======================= GAME ======================= -->
+    <section class="screen" id="screen-game" data-title="Play" hidden>
+      <header id="hud">
+        <div class="hud-group hud-left">
+          <button class="btn btn-ghost" id="btn-pause" aria-label="Pause">II</button>
+          <div class="hud-objective">
+            <span id="hud-mode">Journey</span>
+            <span id="hud-progress" role="status">0 / 5 words</span>
+          </div>
+        </div>
+        <div class="hud-group hud-right">
+          <span id="hud-timer" class="hud-chip" title="Elapsed time">0:00</span>
+          <span id="hud-moves" class="hud-chip" hidden title="Submissions remaining"></span>
+          <span id="hud-score" class="hud-chip hud-score" title="Score">0</span>
+        </div>
+      </header>
+
+      <div id="tutorial-bar" class="tutorial-bar" hidden>
+        <div class="tutorial-text">
+          <strong id="tutorial-title"></strong>
+          <p id="tutorial-body"></p>
+        </div>
+        <button class="btn btn-primary" id="tutorial-next">Next</button>
+        <button class="btn btn-ghost" id="tutorial-skip">Skip tutorial</button>
+      </div>
+
+      <div id="grid-wrap" aria-label="Crossword grid" role="group"></div>
+
+      <div id="word-tray">
+        <div id="current-word" aria-live="off" aria-label="Current word"></div>
+        <div id="word-feedback" role="status"></div>
+      </div>
+
+      <div id="wheel-controls">
+        <button class="btn wheel-btn" id="btn-shuffle" title="Shuffle (S)">⟳<span class="kbd">S</span></button>
+        <button class="btn wheel-btn" id="btn-hint" title="Hint (H)">💡<span class="kbd">H</span></button>
+        <button class="btn wheel-btn" id="btn-undo" title="Undo (U)" hidden>↩<span class="kbd">U</span></button>
+        <button class="btn wheel-btn" id="btn-clear" title="Clear word (Esc)">✕<span class="kbd">Esc</span></button>
+        <button class="btn wheel-btn btn-submit" id="btn-submit" title="Submit word (Enter)">✓<span class="kbd">⏎</span></button>
+      </div>
+      <p id="bonus-line" class="bonus-line"></p>
+    </section>
+
+    <!-- ======================= RESULTS ======================= -->
+    <section class="screen" id="screen-results" data-title="Results" hidden>
+      <div class="panel results-panel">
+        <h2 id="results-headline">Grove complete!</h2>
+        <p id="results-sub"></p>
+        <div id="results-stars" class="stars" aria-label="Star rating"></div>
+        <table id="results-breakdown" class="breakdown">
+          <caption class="sr-only">Score breakdown</caption>
+          <tbody></tbody>
+          <tfoot><tr><th scope="row">Total</th><td id="results-total">0</td></tr></tfoot>
+        </table>
+        <div id="results-achievements" class="achievements"></div>
+        <div id="results-board" class="board"></div>
+        <div class="results-actions">
+          <button class="btn btn-primary" id="btn-results-next">Next</button>
+          <button class="btn" id="btn-results-retry">Retry</button>
+          <button class="btn btn-ghost" id="btn-results-home">Home</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================= OVERLAYS ======================= -->
+  <div class="overlay" id="overlay-pause" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="panel">
+      <h2 id="pause-title">Paused</h2>
+      <div class="stack">
+        <button class="btn btn-primary" id="btn-resume">Resume</button>
+        <button class="btn" id="btn-pause-settings">Settings</button>
+        <button class="btn" id="btn-pause-help">Help</button>
+        <button class="btn" id="btn-restart-level">Restart level</button>
+        <button class="btn btn-ghost" id="btn-leave">Leave round</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="panel settings-panel">
+      <h2 id="settings-title">Settings</h2>
+      <div class="settings-scroll">
+        <fieldset>
+          <legend>Audio</legend>
+          <label class="slider-row">Music <input type="range" id="vol-music" min="0" max="1" step="0.05"></label>
+          <label class="slider-row">Effects <input type="range" id="vol-effects" min="0" max="1" step="0.05"></label>
+          <label class="slider-row">Ambience <input type="range" id="vol-ambience" min="0" max="1" step="0.05"></label>
+          <label class="slider-row">Voice cues <input type="range" id="vol-voice" min="0" max="1" step="0.05"></label>
+          <label class="check-row"><input type="checkbox" id="set-muted"> Mute all</label>
+          <label class="check-row"><input type="checkbox" id="set-captions"> Captions for audio cues</label>
+        </fieldset>
+        <fieldset>
+          <legend>Graphics</legend>
+          <label class="select-row">Quality
+            <select id="set-quality">
+              <option value="auto">Auto</option><option value="high">High</option>
+              <option value="medium">Medium</option><option value="low">Low</option>
+            </select>
+          </label>
+          <label class="check-row"><input type="checkbox" id="set-reduced-motion"> Reduced motion</label>
+          <label class="check-row"><input type="checkbox" id="set-camera-sway"> Gentle camera sway</label>
+          <label class="check-row"><input type="checkbox" id="set-timer"> Show timer</label>
+        </fieldset>
+        <fieldset>
+          <legend>Accessibility</legend>
+          <label class="check-row"><input type="checkbox" id="set-high-contrast"> High contrast</label>
+          <label class="select-row">Color palette
+            <select id="set-palette">
+              <option value="default">Default</option>
+              <option value="deuteranopia">Deuteranopia-safe</option>
+              <option value="protanopia">Protanopia-safe</option>
+              <option value="tritanopia">Tritanopia-safe</option>
+            </select>
+          </label>
+          <label class="select-row">Text size
+            <select id="set-text-size">
+              <option value="normal">Normal</option><option value="large">Large</option><option value="xlarge">Extra large</option>
+            </select>
+          </label>
+          <label class="check-row"><input type="checkbox" id="set-left-handed"> Left-handed controls</label>
+          <label class="check-row"><input type="checkbox" id="set-submit-release"> Submit word on release</label>
+          <label class="check-row"><input type="checkbox" id="set-haptics"> Haptics (vibration)</label>
+        </fieldset>
+        <fieldset>
+          <legend>Game</legend>
+          <label class="check-row"><input type="checkbox" id="set-analytics"> Share anonymous usage stats</label>
+          <button class="btn" id="btn-replay-tutorial">Replay tutorial</button>
+          <p class="fine">Keyboard: type letters to spell · Enter submit · Backspace remove · S shuffle · H hint · U undo · P/Esc pause · arrows + Space to pick letters with focus.</p>
+          <p class="fine">Gamepad: dpad/stick move focus · A pick letter · B remove · X shuffle · Y hint · RB submit · Start pause.</p>
+        </fieldset>
+      </div>
+      <button class="btn btn-primary" id="btn-settings-close">Done</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="panel help-panel">
+      <h2 id="help-title">How to play</h2>
+      <div class="help-cards">
+        <article class="rule-card"><h3>Connect letters</h3><p>Drag across the wheel — or type letters — to spell words of 3+ letters. Each letter can be used once per word.</p></article>
+        <article class="rule-card"><h3>Fill the grid</h3><p>Words that belong to the crossword grid plant themselves and grow a flower. Find them all to complete the grove.</p></article>
+        <article class="rule-card"><h3>Bonus words</h3><p>Real words that aren’t on the grid still score — and grow wildflowers.</p></article>
+        <article class="rule-card"><h3>Shuffle &amp; hints</h3><p>Shuffle only rearranges the wheel’s look. Hints reveal one grid letter for a small point cost.</p></article>
+        <article class="rule-card"><h3>Scoring</h3><p>Grid words score by length. Using every letter in one word earns a full-wheel bonus. Results always show the breakdown.</p></article>
+        <article class="rule-card"><h3>Fair play</h3><p>Seeds are fixed and inspectable. Ranked boards reject changed settings — challenge yourself, not the ledger.</p></article>
+      </div>
+      <button class="btn btn-primary" id="btn-help-close">Close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-setup" hidden role="dialog" aria-modal="true" aria-labelledby="setup-title">
+    <div class="panel">
+      <h2 id="setup-title">Practice</h2>
+      <div id="setup-body"></div>
+      <div class="results-actions">
+        <button class="btn btn-primary" id="btn-setup-start">Start</button>
+        <button class="btn btn-ghost" id="btn-setup-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" aria-hidden="true"></div>
+  <div id="compat-warning" class="panel" hidden>
+    <h2>Limited graphics</h2>
+    <p>WebGL isn’t available, so the 3D grove is resting. The game is fully playable — your progress is safe.</p>
+    <button class="btn btn-primary" id="btn-compat-ok">Continue</button>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

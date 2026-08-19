@@ -1,0 +1,13 @@
+{
+  "name": "word-grove",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js 8080",
+    "test": "node tests/run-tests.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.62.1"
+  }
+}
