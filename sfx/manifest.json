@@ -1,0 +1,92 @@
+[
+  {
+    "name": "letter-select",
+    "seconds": 1,
+    "prompt": "A short soft tap of a small wooden letter tile being picked up, gentle warm click, no echo",
+    "event": "select"
+  },
+  {
+    "name": "letter-deselect",
+    "seconds": 1,
+    "prompt": "A quiet dull wooden tile being set back down, softer and lower than a pickup tap",
+    "event": "deselect"
+  },
+  {
+    "name": "word-rejected",
+    "seconds": 1,
+    "prompt": "A dull rubbery thud followed by a short low descending buzz, like a wrong answer on a game show, muted and not harsh",
+    "event": "invalid"
+  },
+  {
+    "name": "bonus-word",
+    "seconds": 2,
+    "prompt": "Two bright sparkling chime notes rising quickly, like a small bell sprinkled with fairy dust",
+    "event": "word-bonus"
+  },
+  {
+    "name": "word-planted",
+    "seconds": 2,
+    "prompt": "A soft rustle of soil and leaves followed by a cheerful three-note glockenspiel motif, like a flower sprouting in a garden",
+    "event": "word-target"
+  },
+  {
+    "name": "full-wheel",
+    "seconds": 2,
+    "prompt": "A triumphant four-note brass and bell flourish rising to a bright held note, short celebratory fanfare",
+    "event": "pangram"
+  },
+  {
+    "name": "wheel-shuffle",
+    "seconds": 1,
+    "prompt": "A handful of small wooden letter tiles being rattled and shuffled together in a cupped hand",
+    "event": "shuffle"
+  },
+  {
+    "name": "hint-reveal",
+    "seconds": 1,
+    "prompt": "A soft magical shimmer, like a tiny glissando of glass bells with a gentle sparkle tail",
+    "event": "hint"
+  },
+  {
+    "name": "move-undo",
+    "seconds": 1,
+    "prompt": "A quick reversed whoosh, like a page being flipped backward or tape rewinding for half a second",
+    "event": "undo"
+  },
+  {
+    "name": "grove-complete",
+    "seconds": 3,
+    "prompt": "A joyful garden celebration fanfare: rising marimba and bell melody ending on a warm major chord with a soft bird chirp",
+    "event": "complete"
+  },
+  {
+    "name": "round-failed",
+    "seconds": 2,
+    "prompt": "Three soft descending muted marimba notes, gentle and sympathetic disappointment, like a small sigh",
+    "event": "failed"
+  },
+  {
+    "name": "game-pause",
+    "seconds": 1,
+    "prompt": "A single soft muted pluck of a nylon guitar string, calm and neutral",
+    "event": "pause"
+  },
+  {
+    "name": "game-resume",
+    "seconds": 1,
+    "prompt": "A single soft pluck of a nylon guitar string with a slightly rising pitch, welcoming and light",
+    "event": "resume"
+  },
+  {
+    "name": "ui-click",
+    "seconds": 1,
+    "prompt": "A very short clean interface button click, like a light plastic switch being pressed",
+    "event": "ui"
+  },
+  {
+    "name": "achievement-unlock",
+    "seconds": 2,
+    "prompt": "A bright three-note medal-unlock chime with a shimmering sustain, like a small trophy bell being rung",
+    "event": "achievement"
+  }
+]

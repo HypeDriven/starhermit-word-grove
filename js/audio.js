@@ -4,6 +4,27 @@
 
 import { makeRng } from './rng.js';
 
+// Authored sample one-shots (sfx/<name>.opus) backing existing event cases.
+// Procedural synthesis below remains the fallback while a sample is still
+// loading or failed to fetch/decode.
+const SAMPLE_EVENTS = {
+  select: 'letter-select',
+  deselect: 'letter-deselect',
+  invalid: 'word-rejected',
+  'word-bonus': 'bonus-word',
+  'word-target': 'word-planted',
+  pangram: 'full-wheel',
+  shuffle: 'wheel-shuffle',
+  hint: 'hint-reveal',
+  undo: 'move-undo',
+  complete: 'grove-complete',
+  failed: 'round-failed',
+  pause: 'game-pause',
+  resume: 'game-resume',
+  ui: 'ui-click',
+  achievement: 'achievement-unlock',
+};
+
 export class AudioEngine {
   constructor(settings) {
     this.settings = settings;
@@ -15,6 +36,7 @@ export class AudioEngine {
     this.musicLevel = 0; // 0..1 adaptive intensity
     this.rng = makeRng('audio:' + (settings.audioSeed || 'grove'));
     this.captionListener = null;
+    this.samples = new Map(); // name -> { buffer, failed, promise }
   }
 
   onCaption(fn) { this.captionListener = fn; }
@@ -83,52 +105,108 @@ export class AudioEngine {
     src.start(t);
   }
 
+  // Lazy-fetch/decode/cache sfx/<name>.opus and play it through the effects
+  // bus. Returns true only when a decoded sample actually started; callers
+  // fall back to synthesis otherwise. First call after the user-gesture
+  // unlock kicks off the fetch and returns false (still loading).
+  playSample(name) {
+    if (!this.ensure()) return false;
+    let entry = this.samples.get(name);
+    if (!entry) {
+      entry = { buffer: null, failed: false, promise: null };
+      this.samples.set(name, entry);
+      entry.promise = fetch(`sfx/${name}.opus`)
+        .then((res) => {
+          if (!res.ok) throw new Error(`sfx ${name}: ${res.status}`);
+          return res.arrayBuffer();
+        })
+        .then((data) => this.ctx.decodeAudioData(data))
+        .then((buffer) => { entry.buffer = buffer; })
+        .catch(() => { entry.failed = true; });
+      return false;
+    }
+    if (entry.failed || !entry.buffer) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = entry.buffer;
+    src.connect(this.buses.effects);
+    src.start();
+    return true;
+  }
+
   // Event mapping. Tier: ack < legal < combo < completion.
   event(name, detail = {}) {
     const v = 0.85 + this.rng() * 0.3; // seeded pitch variant
+    const sampled = SAMPLE_EVENTS[name] ? this.playSample(SAMPLE_EVENTS[name]) : false;
     switch (name) {
       case 'select':
-        this.blip(340 * v * (1 + (detail.step || 0) * 0.06), 0.08, 'triangle', 0.12);
+        if (!sampled) this.blip(340 * v * (1 + (detail.step || 0) * 0.06), 0.08, 'triangle', 0.12);
         break;
-      case 'deselect': this.blip(240 * v, 0.06, 'triangle', 0.08); break;
+      case 'deselect': if (!sampled) this.blip(240 * v, 0.06, 'triangle', 0.08); break;
       case 'invalid':
-        this.blip(160, 0.18, 'sawtooth', 0.08);
-        this.blip(120, 0.22, 'sawtooth', 0.06, 'effects', 0.05);
+        if (!sampled) {
+          this.blip(160, 0.18, 'sawtooth', 0.08);
+          this.blip(120, 0.22, 'sawtooth', 0.06, 'effects', 0.05);
+        }
         this.caption('Word not accepted');
         break;
       case 'word-bonus':
-        this.blip(420 * v, 0.12, 'sine', 0.14);
-        this.blip(560 * v, 0.16, 'sine', 0.12, 'effects', 0.07);
+        if (!sampled) {
+          this.blip(420 * v, 0.12, 'sine', 0.14);
+          this.blip(560 * v, 0.16, 'sine', 0.12, 'effects', 0.07);
+        }
         this.caption('Bonus word');
         break;
       case 'word-target': {
-        const base = 392 * v;
-        [0, 4, 7].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.22, 'sine', 0.14, 'effects', i * 0.07));
-        this.noise(0.3, 2400, 1.2, 0.05, 'effects', 0.05);
+        if (!sampled) {
+          const base = 392 * v;
+          [0, 4, 7].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.22, 'sine', 0.14, 'effects', i * 0.07));
+          this.noise(0.3, 2400, 1.2, 0.05, 'effects', 0.05);
+        }
         this.caption('Word planted');
         break;
       }
       case 'pangram': {
-        const base = 440;
-        [0, 4, 7, 12].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.3, 'triangle', 0.14, 'effects', i * 0.08));
+        if (!sampled) {
+          const base = 440;
+          [0, 4, 7, 12].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.3, 'triangle', 0.14, 'effects', i * 0.08));
+        }
         this.caption('Full wheel word');
         break;
       }
-      case 'shuffle': this.noise(0.25, 1200, 0.8, 0.1); this.caption('Wheel shuffled'); break;
-      case 'hint': this.blip(660, 0.2, 'sine', 0.12); this.blip(880, 0.25, 'sine', 0.1, 'effects', 0.1); this.caption('Hint revealed'); break;
-      case 'undo': this.blip(300, 0.1, 'sine', 0.1); this.blip(220, 0.12, 'sine', 0.08, 'effects', 0.06); break;
+      case 'shuffle': if (!sampled) this.noise(0.25, 1200, 0.8, 0.1); this.caption('Wheel shuffled'); break;
+      case 'hint':
+        if (!sampled) {
+          this.blip(660, 0.2, 'sine', 0.12);
+          this.blip(880, 0.25, 'sine', 0.1, 'effects', 0.1);
+        }
+        this.caption('Hint revealed');
+        break;
+      case 'undo':
+        if (!sampled) {
+          this.blip(300, 0.1, 'sine', 0.1);
+          this.blip(220, 0.12, 'sine', 0.08, 'effects', 0.06);
+        }
+        break;
       case 'complete': {
-        const base = 523;
-        [0, 4, 7, 12, 16].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.5, 'sine', 0.13, 'effects', i * 0.11));
-        this.noise(0.8, 3200, 0.6, 0.05, 'effects', 0.2);
+        if (!sampled) {
+          const base = 523;
+          [0, 4, 7, 12, 16].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.5, 'sine', 0.13, 'effects', i * 0.11));
+          this.noise(0.8, 3200, 0.6, 0.05, 'effects', 0.2);
+        }
         this.caption('Level complete');
         break;
       }
-      case 'failed': [220, 185, 147].forEach((f, i) => this.blip(f, 0.35, 'sine', 0.1, 'effects', i * 0.15)); this.caption('Round over'); break;
-      case 'pause': this.blip(280, 0.08, 'sine', 0.08); break;
-      case 'resume': this.blip(340, 0.08, 'sine', 0.08); break;
-      case 'ui': this.blip(500 * v, 0.04, 'triangle', 0.06); break;
-      case 'achievement': [523, 659, 784].forEach((f, i) => this.blip(f, 0.3, 'triangle', 0.1, 'effects', i * 0.09)); this.caption('Achievement unlocked'); break;
+      case 'failed':
+        if (!sampled) [220, 185, 147].forEach((f, i) => this.blip(f, 0.35, 'sine', 0.1, 'effects', i * 0.15));
+        this.caption('Round over');
+        break;
+      case 'pause': if (!sampled) this.blip(280, 0.08, 'sine', 0.08); break;
+      case 'resume': if (!sampled) this.blip(340, 0.08, 'sine', 0.08); break;
+      case 'ui': if (!sampled) this.blip(500 * v, 0.04, 'triangle', 0.06); break;
+      case 'achievement':
+        if (!sampled) [523, 659, 784].forEach((f, i) => this.blip(f, 0.3, 'triangle', 0.1, 'effects', i * 0.09));
+        this.caption('Achievement unlocked');
+        break;
     }
   }
 
