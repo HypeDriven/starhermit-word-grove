@@ -260,6 +260,14 @@ export function dispatch(prevState, cmd) {
       const snap = JSON.parse(state.undoStack.pop());
       const restored = Object.assign(structuredClone(state), snap);
       restored.log = state.log;
+      // Retain the remaining history so multi-level undo keeps working (each
+      // snapshot blanks its own stack to avoid recursive growth) — the popped
+      // entry is already gone from `state.undoStack`.
+      restored.undoStack = state.undoStack;
+      // Never rewind the authoritative clock: tick/elapsedTicks must stay
+      // monotonic across undo (spec §2 "monotonically increasing turn/tick").
+      restored.tick = state.tick;
+      restored.elapsedTicks = state.elapsedTicks;
       restored.log.push({ id: cmd.id ?? null, type: 'undo', tick: state.tick });
       restored.lastError = null;
       events.push({ type: 'undo' });

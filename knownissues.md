@@ -11,188 +11,84 @@ taken on trust.
 | --- | --- |
 | `npm test` (`tests/run-tests.js`) | 40097 passed, 0 failed (12 suites incl. replay determinism, fuzz, golden sessions, authoritative score validation) |
 | `node --check` on all modules (`js/*.js`, `server.js`, `tests/*`) | clean, no failures |
-| `tests/e2e.mjs` | not present |
+| `tests/e2e.mjs` (`npm run test:e2e` / `node tests/e2e.mjs`) | PASS — desktop + mobile, no page errors (exit 0) |
 | `.devtools/smoke.mjs` (headless Chrome) | PASS — 19 checks, 0 failures, no console errors |
 
 The smoke script hard-codes port 8137; it was copied to a scratch directory and re-pointed at port
 39702 from the assigned range so it would not collide. Game source was not modified. Direct API
 probes used port 39703.
 
-## Confirmed defects
+## Confirmed defects — all resolved (fixed 2026-09-04)
 
-### 1. Undo discards the entire undo stack — only one undo is ever possible
+All eight confirmed defects below were reproduced against the current source, fixed with a
+minimal change to the documented "Expected" behaviour, and re-verified with `npm test`
+(40097 passed, 0 failed) and `node tests/e2e.mjs` (E2E PASS, desktop + mobile, exit 0). The
+evidence that originally demonstrated each defect now produces the correct result.
 
-- **File:** `js/rules.js:256-267` (`dispatch`, `case 'undo'`) with `js/rules.js:297-302`
-  (`snapshotForUndo`)
-- **Trigger:** In any mode with `allowUndo` (Practice, Learn/tutorial), make three scoring moves and
-  press undo twice.
-- **Behaviour:** `snapshotForUndo` deliberately blanks the stack (`s.undoStack = []`) before the
-  snapshot is stringified. On undo, that blank array is copied straight back over the live stack:
+### 1. Undo discards the entire undo stack — only one undo is ever possible — RESOLVED
 
-  ```js
-  const snap = JSON.parse(state.undoStack.pop());
-  const restored = Object.assign(structuredClone(state), snap);   // snap.undoStack === []
-  ```
+- **File:** `js/rules.js:262-266` (`case 'undo'`)
+- **Fix:** after restoring the popped snapshot, retain the remaining history —
+  `restored.undoStack = state.undoStack` (the popped entry is already gone, so the rest of the
+  stack is preserved). Verified: two submits then two undos both succeed, leaving `found={}` and
+  `undoStack=[]`.
 
-  The remaining history is destroyed. The second undo returns `nothing-to-undo` and
-  `legalActions().canUndo` flips to `false`, so `js/ui.js:225` greys the button out.
-- **Expected:** The 50-entry cap at `js/rules.js:148` and the per-action `pushUndo()` show
-  multi-level undo is intended. spec.md §2 Modes — "Practice: selectable difficulty, restart, undo
-  where rules permit".
-- **Evidence:**
+### 2. The authoritative validator accepts a replay with the `tick` commands removed — RESOLVED
 
-  ```
-  submit led    ok=true  undoStack=1  canUndo=true
-  submit lie    ok=true  undoStack=2  canUndo=true
-  submit idea   ok=true  undoStack=3  canUndo=true
-  undo #1       ok=true  undoStack=0  canUndo=false
-  undo #2       ok=false reason=nothing-to-undo
-  undo #3       ok=false reason=nothing-to-undo
-  ```
+- **File:** `js/session.js:172-204` (`verifyReplay`)
+- **Fix:** bind the authoritative clock to the recorded tick stream. `verifyReplay` now tracks
+  `declaredMaxTick` (the highest recorded `cmd.tick` across all commands) and rejects the replay
+  with `tick-count-mismatch` when that exceeds the replayed `state.elapsedTicks`. Stripping every
+  tick command leaves the ticks recorded on the surviving (submit) commands ahead of the replayed
+  clock, so the forged replay is rejected instead of paying the full speed bonus. Verified: honest
+  `challenge:swift-1` run ok; tick-stripped forgery -> `{ok:false, reason:'tick-count-mismatch'}`.
 
-### 2. The authoritative validator accepts a replay with the `tick` commands removed, paying the full speed bonus
+### 3. Leaderboard rows hard-code completion/invalid count and read elapsed time from the client — RESOLVED
 
-- **File:** `js/session.js:172-191` (`verifyReplay`), `js/rules.js:158-169` (`case 'tick'`),
-  `js/rules.js:196-198` (`timeBonus`)
-- **Trigger:** Play a timed challenge honestly, then strip every `{type:'tick'}` entry from
-  `replay.commands` and recompute the terminal hash before submitting.
-- **Behaviour:** `elapsedTicks` advances *only* on replayed `tick` commands, and those commands come
-  from the client. Nothing binds the tick count to `replay.startedAt`, to wall-clock, or to the
-  number of player commands. With the ticks gone, `elapsedSeconds(state)` is 0 and
+- **File:** `server.js:77-110` (`handleApi` scores POST), `server.js:49-53` (`validateScoreSubmission`),
+  `js/session.js:203-204` (`verifyReplay` return)
+- **Fix:** `verifyReplay` now returns the replayed `status`, `invalidCount` and authoritative
+  `elapsedSec`; `validateScoreSubmission` passes them through; the board entry uses them instead of
+  `completed:true`, `invalidCount:0` and client `payload.durationSec`. Verified: an abandoned run
+  with two junk words stores `completed:false, invalidCount:2, elapsedSec:0` rather than the
+  previous hard-coded (or client-supplied) values.
 
-  ```js
-  state.score.timeBonus += Math.max(0, Math.round((timeLimitSec - elapsedSeconds(state)) * 2));
-  ```
+### 4. The rank returned to the submitter is the rank of the first entry sharing their score — RESOLVED
 
-  pays the maximum. `validateScoreSubmission` recomputes the score from the same tick-free replay,
-  so `result.score === score` holds and the submission is accepted.
-- **Expected:** spec.md §5 — "Treat client clocks, scores, inventories, roles, physics outcomes, and
-  completion claims as untrusted in competitive contexts." `challenge:*` levels are `ranked = true`
-  (`js/content.js:312`).
-- **Evidence:** `challenge:swift-1` (120 s limit), the same five target words either way:
+- **File:** `server.js:104-106` (`handleApi`)
+- **Fix:** the rank is now the position of the row that was just inserted, found by its `sessionId`
+  (`b.entries.indexOf` on the pushed entry) on the sorted list, instead of `findIndex` on `score`.
+  Verified: three distinct runs with the same score report ranks 1, 2, 3.
 
-  ```
-  honest: elapsedSec = 110  score = 510  (timeBonus  20)
-  forged: elapsedSec =   0  score = 730  (timeBonus 240)
-  honest -> {"ok":true,"score":510,"hash":"6ba12e23"}
-  forged -> {"ok":true,"score":730,"hash":"c4e070d5"}
-  ```
+### 5. `verifyReplay` contains an empty `if` body — engine-rejection check does nothing — RESOLVED
 
-### 3. Leaderboard rows hard-code `completed: true` and `invalidCount: 0`, and read elapsed time from the client
+- **File:** `js/session.js:184-186` (`verifyReplay`)
+- **Fix:** the engine-rejection branch now returns `{ok:false, reason:'engine-rejected:<reason>'}`
+  for any non-legitimate-player-input rejection (e.g. `not-active`, `shuffle-disabled`), instead of
+  evaluating the condition and discarding it. Verified: a replay appending a `shuffle` after
+  terminal `complete` is rejected with `engine-rejected:not-active`.
 
-- **File:** `server.js:84-91`
-- **Trigger:** Submit any validated replay of a run that was abandoned or that failed on the clock.
-- **Behaviour:** The row written to the board is
+### 6. Undo rewinds the monotonic tick counter and the authoritative clock — RESOLVED
 
-  ```js
-  { name, score: result.score, completed: true, invalidCount: 0,
-    elapsedSec: payload.durationSec || 0, sessionId: String(payload.replay.commands[0]?.id || ...) }
-  ```
+- **File:** `js/rules.js:256-270` (`case 'undo'`)
+- **Fix:** undo keeps the clock monotonic — `restored.tick = state.tick` and
+  `restored.elapsedTicks = state.elapsedTicks` are set from the current (post-undo) state rather
+  than the restored snapshot, so a submit/undo cycle can no longer hold `elapsedSeconds` low.
+  Verified: after 60 s of play then undo, `tick`/`elapsedTicks` stay at 60 (were 30 before).
 
-  The replayed state knows the real `status`, `invalidCount` and `elapsedTicks`, but none of them
-  are read. `compareResults` (`js/rules.js:114`) orders by completion, then score, then
-  `invalidCount`, then `elapsedSec` — with two of those four fields pinned to constants and the
-  third supplied by the client, three quarters of the spec's ordering rule is inert, and a submitter
-  who omits `durationSec` wins every remaining tie.
-- **Expected:** spec.md §2 — "Ties use, in order: primary objective completion, fewer invalid
-  actions, lower authoritative elapsed time, then stable session identifier."
-- **Evidence:** a run that submitted two junk words, planted one target, then abandoned:
+### 7. Score submission is not idempotent — the same run can be replayed onto the board indefinitely — RESOLVED
 
-  ```
-  true run:     status = failed  completed = false  invalidCount = 2  score = 60
-  submit ->     [200, {"ok":true,"rank":1}]
-  board entry:  {"name":"quitter","score":60,"completed":true,"invalidCount":0,
-                 "elapsedSec":0,"sessionId":"quitter:0:0"}
-  ```
+- **File:** `server.js:89-94` (`handleApi`)
+- **Fix:** before pushing, the handler looks up a row keyed by the same `sessionId`
+  (`replay.commands[0].id`, per spec §5 "Reject duplicates idempotently by command ID"); if one
+  exists it returns `{ok:true, rank, duplicate:true}` without adding a new row. Verified: four
+  identical submissions produce a single board row.
 
-### 4. The rank returned to the submitter is the rank of the first entry sharing their score
+### 8. The shipping server serves the design document — RESOLVED
 
-- **File:** `server.js:95`
-- **Trigger:** Three players finish the same board with the same score.
-- **Behaviour:** `b.entries.findIndex((e) => e.score === result.score) + 1` matches on score, not on
-  the submitter's own row, so every tied player is told they are first. (If the new entry is pushed
-  past the 100-row cut, `findIndex` returns `-1` and the response reports `rank: 0`.)
-- **Expected:** The rank reported should be the position of the row that was just inserted.
-- **Evidence:**
-
-  ```
-  alice score 60 -> {"ok":true,"rank":1}
-  bob   score 60 -> {"ok":true,"rank":1}
-  carol score 60 -> {"ok":true,"rank":1}
-  board: 1. alice 60 | 2. bob 60 | 3. carol 60
-  ```
-
-### 5. `verifyReplay` contains an empty `if` body — the engine-rejection check does nothing
-
-- **File:** `js/session.js:179-185`
-- **Trigger:** Always; this is dead validation.
-- **Behaviour:** The block is written as
-
-  ```js
-  if (!ok && cmd.type !== 'tick' && !['too-short','letters-unavailable','already-found','unknown-word'].includes(next.lastError)) {
-    // Invalid player inputs are legitimate log entries; engine-level rejections are not.
-  }
-  ```
-
-  The condition is fully evaluated and then nothing happens. The comment states the intent
-  ("engine-level rejections are not [legitimate]") but no `return { ok: false, ... }` was ever
-  written, so a replay containing commands the engine rejects at the engine level — `not-active`,
-  `malformed-word`, `out-of-moves`, `shuffle-disabled`, `undo-disabled`, `unknown-command` — passes
-  validation unchallenged.
-- **Expected:** spec.md §5 — "Validate all network input for identity, session membership,
-  turn/tick, bounds, rate, payload size, and legal action."
-- **Evidence:** the source above; there is no statement between the braces.
-
-### 6. Undo rewinds the monotonic tick counter and the authoritative clock
-
-- **File:** `js/rules.js:256-267` (`case 'undo'`)
-- **Trigger:** Play for 30 s, submit a word, play another 30 s, press undo.
-- **Behaviour:** The undo snapshot is the *whole* pre-command state, so `tick` and `elapsedTicks`
-  are restored along with the score — 30 seconds of real play vanish from the clock. Repeated
-  submit/undo cycles hold `elapsedSeconds` arbitrarily low.
-- **Expected:** spec.md §2 — the engine "must expose ... a monotonically increasing turn/tick
-  number". A tick counter that moves backwards is not monotonic, and the same rewind would defeat
-  `timeLimitSec` termination and inflate `timeBonus`.
-- **Evidence:**
-
-  ```
-  t=30s   elapsedSec = 30
-  after 60 s, submissions = 1, elapsedSec = 60   (state.tick = 601)
-  after undo  elapsedSec = 30                    (state.tick = 300)
-  ```
-
-  Impact today is limited because no shipped mode combines `allowUndo` with `timeLimitSec`
-  (`js/content.js:216, 243, 272, 302, 327`) and undo modes are unranked — but the state transition
-  itself is wrong and the guard is one content edit away from mattering.
-
-### 7. Score submission is not idempotent — the same run can be replayed onto the board indefinitely
-
-- **File:** `server.js:83-94`
-- **Trigger:** POST the identical valid payload to `/api/v1/scores` several times.
-- **Behaviour:** `b.entries.push(...)` runs unconditionally; nothing checks whether a row with the
-  same `sessionId` (or replay hash) already exists. One legitimate run can be used to occupy every
-  slot on a board.
-- **Expected:** spec.md §5 — "Reject duplicates idempotently by command ID." (Vanishing Cubes
-  implements exactly this check at `server.js:327-334`.)
-- **Evidence:** four byte-identical submissions of one completed `challenge:swift-1` run:
-
-  ```
-  identical submission #1 -> {"ok":true,"rank":1}
-  identical submission #2 -> {"ok":true,"rank":1}
-  identical submission #3 -> {"ok":true,"rank":1}
-  identical submission #4 -> {"ok":true,"rank":1}
-  board rows: 4   spammer/dupe:0:0  spammer/dupe:0:0  spammer/dupe:0:0  spammer/dupe:0:0
-  ```
-
-### 8. The shipping server serves the design document
-
-- **File:** `server.js:57-62` (`MIME` includes `.md`), `server.js:120-138`
-- **Trigger:** `GET /spec.md`
-- **Behaviour:** Returns 200 with the full product specification as `text/markdown`.
-- **Expected:** spec.md §6 — "Keep source files, secrets, design documents, and source maps outside
-  the uploaded distribution." (The sibling game Vanishing Cubes explicitly blocks this and has a
-  smoke assertion for it.)
-- **Evidence:** `GET /spec.md -> 200  "# Word Grove — Product and Game Specification …"`
+- **File:** `server.js:62` (`MIME`, `.md` removed), `server.js:141-146` (static handler)
+- **Fix:** the static file handler returns 403 for any path ending `.md` or `.map` (design docs /
+  source maps), and `.md` is no longer mapped in `MIME`. Verified: `GET /spec.md` -> 403 (was 200).
 
 ## Suspected — not confirmed
 

@@ -176,18 +176,33 @@ export function verifyReplay(level, replay) {
     constraints: level.constraints, ranked: !!level.ranked,
   });
   if (rules.stateHash(state) !== replay.initialHash) return { ok: false, reason: 'initial-hash-mismatch' };
+  let declaredMaxTick = 0;
   for (const cmd of replay.commands) {
     const { state: next, ok } = rules.dispatch(state, cmd);
     if (!ok && cmd.type !== 'tick' && !['too-short', 'letters-unavailable', 'already-found', 'unknown-word'].includes(next.lastError)) {
-      // Invalid player inputs are legitimate log entries; engine-level rejections are not.
+      // Invalid player inputs are legitimate log entries; engine-level
+      // rejections are not — a replay the engine itself refuses is tampered.
+      return { ok: false, reason: 'engine-rejected:' + next.lastError };
     }
+    if (typeof cmd.tick === 'number' && cmd.tick > declaredMaxTick) declaredMaxTick = cmd.tick;
     state = next;
+  }
+  // Bind elapsed time to the recorded tick stream (spec §5 "client clocks ...
+  // untrusted"). Stripping every tick command would leave `elapsedTicks`
+  // behind the ticks that were recorded on the surviving commands — reject
+  // that rather than pay the full speed bonus for a forged replay.
+  if (declaredMaxTick > state.elapsedTicks) {
+    return { ok: false, reason: 'tick-count-mismatch' };
   }
   const finalHash = rules.stateHash(state);
   if (replay.terminal && replay.terminal.finalHash !== finalHash) {
     return { ok: false, reason: 'final-hash-mismatch' };
   }
-  return { ok: true, score: rules.totalScore(state), finalHash };
+  return {
+    ok: true, score: rules.totalScore(state), finalHash,
+    status: state.status, invalidCount: state.invalidCount,
+    elapsedSec: rules.elapsedSeconds(state),
+  };
 }
 
 export function sessionSeedCode(seed) {
