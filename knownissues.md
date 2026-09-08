@@ -90,6 +90,55 @@ evidence that originally demonstrated each defect now produces the correct resul
 - **Fix:** the static file handler returns 403 for any path ending `.md` or `.map` (design docs /
   source maps), and `.md` is no longer mapped in `MIME`. Verified: `GET /spec.md` -> 403 (was 200).
 
+## Review pass 2026-09-08 — confirmed defects, all resolved
+
+All six defects below were reproduced against the current source, fixed minimally, and
+re-verified with `npm test` (40097 passed, 0 failed), `node tests/e2e.mjs` (E2E PASS,
+desktop + mobile, exit 0) and `.devtools/smoke.mjs` (ALL SMOKE CHECKS PASSED, run on a
+re-pointed port because 8137 was occupied by a different game's dev server).
+
+### 9. Backgrounding the tab freezes the round with no way to resume — RESOLVED
+
+- **File:** `js/main.js` (visibilitychange handler)
+- **Fix:** the handler paused the session but never opened the pause overlay, and every
+  resume path requires either the overlay or `status === 'active'` — the game was stuck.
+  It now routes through `ui.pauseGame()`, so the pause overlay (with Resume) opens.
+
+### 10. Hints and the word-planted flash target the wrong grid word — RESOLVED
+
+- **File:** `js/session.js` (`gridModel`), `js/ui.js` (`updateGrid`)
+- **Fix:** `state.revealed` and word events are indexed by target order (alphabetical),
+  but the grid view read them as placement order (length-first) — a hint for "fine" lit a
+  cell of "knife". `gridModel` now resolves `revealed` through the word's target index,
+  and `updateGrid` takes the word and resolves its placement. Verified by script.
+
+### 11. Enter on a focused wheel tile both toggles the tile and submits — RESOLVED
+
+- **File:** `js/ui.js` (tile keydown)
+- **Fix:** the native button activation (click) fired alongside the document-level Enter
+  submit. The tile keydown now `preventDefault()`s Enter so it only submits; Space remains
+  the pick key. Verified in headless Chrome.
+
+### 12. Score-chase share code cannot reproduce the grove — RESOLVED
+
+- **File:** `js/main.js` (`startChase`), `index.html` (chase screen copy)
+- **Fix:** the shared "WG-XXXXXXX" code is a one-way hash of the seed; entering it
+  generated a different grove (verified: different letters/targets). The toast now shares
+  the raw seed, which round-trips through the seed form; the hash code still names boards.
+
+### 13. Oversized score payloads hang the response — RESOLVED
+
+- **File:** `server.js` (`readBody`)
+- **Fix:** the old code called `req.destroy()` without settling the promise, so the handler
+  never responded. It now resolves (flagging the oversize so the 413 branch runs) while
+  continuing to drain the stream. Verified: 600 KB body → 413 `payload-too-large` (was: hang).
+
+### 14. Missing LICENSE.md; duplicate favicon; charset after a link tag — RESOLVED
+
+- **Files:** `LICENSE.md` (added, PolyForm Noncommercial 1.0.0, byte-identical to sibling
+  repos), `index.html` (`<meta charset>` moved to the top of `<head>`, duplicate emoji
+  data-URI favicon removed in favour of `favicon.svg`).
+
 ## Suspected — not confirmed
 
 ### 1. `migrate` silently accepts a document with no version field
@@ -102,16 +151,7 @@ evidence that originally demonstrated each defect now produces the correct resul
 - **Why unconfirmed:** `js/storage.js` may reject such payloads before `migrate` is reached; the
   full load path was not exercised with a hand-corrupted store within this pass.
 
-### 2. Oversized request bodies leave the response hanging
-
-- **File:** `server.js:110-117` (`readBody`)
-- **Concern:** On exceeding 512 KB the handler calls `req.destroy()` but never resolves or rejects
-  the promise, so the awaiting handler never writes a response.
-- **Why unconfirmed:** whether `'error'` fires reliably after `destroy()` (and therefore whether the
-  promise rejects into an unhandled rejection instead) depends on Node's socket teardown ordering;
-  not reproduced here.
-
-### 3. Leaderboard tie-break puts completion ahead of score
+### 2. Leaderboard tie-break puts completion ahead of score
 
 - **File:** `js/rules.js:114-120` (`compareResults`)
 - **Concern:** The spec sentence reads "Ties use, in order: primary objective completion, fewer

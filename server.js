@@ -124,7 +124,12 @@ async function handleApi(req, res, url) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (c) => { data += c; if (data.length > 512 * 1024) req.destroy(); });
+    let tooBig = false;
+    req.on('data', (c) => {
+      if (tooBig) return; // keep draining so the 413 response flushes cleanly
+      data += c;
+      if (data.length > 512 * 1024) { tooBig = true; resolve(data); }
+    });
     req.on('end', () => resolve(data));
     req.on('error', reject);
   });
@@ -133,8 +138,15 @@ function readBody(req) {
 export function startServer(port = 8080) {
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    if (url.pathname.startsWith('/api/')) return handleApi(req, res, url);
-    let path = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
+    if (url.pathname.startsWith('/api/')) {
+      try { return await handleApi(req, res, url); }
+      catch { return json(res, 400, { error: 'bad-request' }); }
+    }
+    let decoded;
+    try { decoded = decodeURIComponent(url.pathname); }
+    catch { return json(res, 400, { error: 'bad-path' }); }
+    if (decoded.split(/[\\/]/).some(part => part.startsWith('.'))) return json(res, 403, { error: 'forbidden' });
+    let path = normalize(decoded);
     if (path === '/' || path === '\\') path = '/index.html';
     const file = join(ROOT, path);
     if (!file.startsWith(ROOT)) return json(res, 403, { error: 'forbidden' });

@@ -64,10 +64,10 @@ class App {
       this.hidden = document.hidden;
       if (this.hidden) {
         this.audio.suspend();
-        // Backgrounding pauses the solo simulation.
-        if (this.session?.state.status === 'active') {
-          this.session.pause();
-          this.ui.pausedByOverlay = true;
+        // Backgrounding pauses the solo simulation. Route through the UI so
+        // the pause overlay opens — without it there is no resume affordance.
+        if (this.session?.state.status === 'active' && this.ui.currentScreen === 'screen-game') {
+          this.ui.pauseGame();
         }
         this.persistSnapshot();
       } else {
@@ -216,7 +216,9 @@ class App {
     level.chaseSeed = seed;
     level.ranked = false;
     this.startRound(level);
-    this.ui.toast(`Seed code: ${sessionSeedCode('chase:' + seed)} — share it to compare`, true);
+    // The hash-based WG- code only names the board; sharing it can't
+    // reproduce the grove. The raw seed round-trips through the seed form.
+    this.ui.toast(`Seed “${seed}” — share it so friends play the same grove`, true);
     this.chaseSeed = seed;
   }
 

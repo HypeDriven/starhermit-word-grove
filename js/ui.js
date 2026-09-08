@@ -246,7 +246,7 @@ export class UI {
         if (ev.kind === 'target') {
           app.audio.event(ev.pangram ? 'pangram' : 'word-target');
           this.feedback(ev.pangram ? `Full wheel! +${50}` : `“${ev.word}” planted!`, 'good');
-          this.updateGrid(ev.placement);
+          this.updateGrid(ev.word);
           app.renderer?.bloomWord('target', ev.word);
           app.haptic(30);
         } else {
@@ -340,16 +340,11 @@ export class UI {
     this.updateGrid();
   }
 
-  updateGrid(flashPlacement = null) {
+  updateGrid(flashWord = null) {
     const model = this.session.gridModel();
-    const hinted = new Set(this.session.state.hintedCells);
     for (const [k, d] of this.gridCells) {
       const cell = model.cells.get(k);
       const foundWord = cell.words.some((pi) => this.session.state.found[model.placements[pi].word]);
-      const wasHinted = cell.words.some((pi) => {
-        const idx = cell.words.indexOf(pi);
-        return hinted.has(pi + ':' + this.cellLetterIndex(model.placements[pi], cell));
-      });
       d.classList.remove('hidden-letter', 'revealed', 'hinted', 'flash');
       if (cell.revealed) {
         d.textContent = cell.letter.toUpperCase();
@@ -359,20 +354,19 @@ export class UI {
         d.classList.add('hidden-letter');
       }
     }
-    if (flashPlacement !== null && flashPlacement !== undefined) {
-      const p = model.placements[flashPlacement];
-      for (let i = 0; i < p.word.length; i++) {
-        const x = p.dir === 0 ? p.x + i : p.x;
-        const y = p.dir === 0 ? p.y : p.y + i;
-        this.gridCells.get(x + ',' + y)?.classList.add('flash');
+    // Session word events carry the word, not a placement index — resolve the
+    // placement here (placement order differs from target order).
+    if (flashWord) {
+      const p = model.placements.find((pl) => pl.word === flashWord);
+      if (p) {
+        for (let i = 0; i < p.word.length; i++) {
+          const x = p.dir === 0 ? p.x + i : p.x;
+          const y = p.dir === 0 ? p.y : p.y + i;
+          this.gridCells.get(x + ',' + y)?.classList.add('flash');
+        }
+        this.announce(`“${flashWord}” placed on the grid.`, false);
       }
     }
-    const target = this.session.state.targets[flashPlacement];
-    if (target) this.announce(`“${target}” placed on the grid.`, false);
-  }
-
-  cellLetterIndex(placement, cell) {
-    return placement.dir === 0 ? cell.x - placement.x : cell.y - placement.y;
   }
 
   // ---------------------------------------------------------------- wheel --
@@ -389,6 +383,9 @@ export class UI {
       b.addEventListener('pointerdown', (e) => this.onTileDown(e, i));
       b.addEventListener('click', (e) => { /* keyboard activation */ if (!this.dragged) this.toggleTileKeyboard(i); });
       b.addEventListener('keydown', (e) => {
+        // Enter must submit the word (document handler), not activate this
+        // button — suppress the native click so the tile isn't toggled too.
+        if (e.key === 'Enter') e.preventDefault();
         if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); this.focusTile((i + 1) % this.tileButtons.length); }
         if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); this.focusTile((i - 1 + this.tileButtons.length) % this.tileButtons.length); }
       });

@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <meta charset="utf-8">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2e4a2a">
 <title>Word Grove</title>
 <meta name="description" content="Swipe through a letter wheel to grow a crossword grove.">
 <link rel="stylesheet" href="css/style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
 <body>
@@ -73,10 +72,10 @@
         <h2>Score chase</h2>
       </header>
       <div class="panel narrow">
-        <p>Play the same grove as a friend and compare scores. Enter a seed code, or start a fresh one and share its code.</p>
+        <p>Play the same grove as a friend and compare scores. Enter a friend's seed, or start a fresh one and share the seed it shows.</p>
         <form id="chase-form" class="row-form">
           <label for="chase-seed">Seed code</label>
-          <input id="chase-seed" type="text" inputmode="text" autocomplete="off" placeholder="WG-XXXXXXX or any word" maxlength="24">
+          <input id="chase-seed" type="text" inputmode="text" autocomplete="off" placeholder="Paste a friend's seed, or any word" maxlength="24">
           <button class="btn btn-primary" type="submit">Play seed</button>
         </form>
         <button class="btn" id="btn-chase-random">New random seed</button>

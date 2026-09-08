@@ -106,6 +106,9 @@ export class Session {
     const cells = new Map();
     this.level.grid.placements.forEach((p, pi) => {
       const wordFound = !!this.state.found[p.word];
+      // state.revealed is indexed by target order (alphabetical), not by
+      // placement order (length-first) — resolve through the word.
+      const ti = this.state.targets.indexOf(p.word);
       for (let i = 0; i < p.word.length; i++) {
         const x = p.dir === 0 ? p.x + i : p.x;
         const y = p.dir === 0 ? p.y : p.y + i;
@@ -113,7 +116,7 @@ export class Session {
         let cell = cells.get(k);
         if (!cell) { cell = { x, y, letter: p.word[i], revealed: false, words: [] }; cells.set(k, cell); }
         cell.words.push(pi);
-        if (wordFound || this.state.revealed[pi][i]) cell.revealed = true;
+        if (wordFound || (ti >= 0 && this.state.revealed[ti][i])) cell.revealed = true;
       }
     });
     return { cells, width: g.width, height: g.height, placements: g.placements };
