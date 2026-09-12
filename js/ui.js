@@ -117,7 +117,10 @@ export class UI {
   refreshTitle() {
     const p = this.app.progress;
     $('flowers-count').textContent = p.flowers;
-    $('btn-profile-name').textContent = p.displayName;
+    // Hosted: the account nickname from the platform profile. Offline: the
+    // locally edited gardener name.
+    $('btn-profile-name').textContent = this.app.platform.nickname || p.displayName;
+    this.setSyncStatus(this.app.platform.syncState);
     const nextIdx = this.app.nextJourneyIndex();
     $('journey-sub').textContent = nextIdx >= journeyLevelCount()
       ? 'All groves complete ✓'
@@ -130,12 +133,27 @@ export class UI {
   }
 
   editProfileName() {
+    if (this.app.platform.hosted) {
+      this.toast('Your gardener name comes from your StarHermit account');
+      return;
+    }
     const name = prompt('Gardener name (shown on local boards):', this.app.progress.displayName);
     if (name && name.trim()) {
       this.app.progress.displayName = name.trim().slice(0, 20);
       this.app.saveProgress();
       this.refreshTitle();
     }
+  }
+
+  // Small cloud-sync indicator next to the profile line (hosted only).
+  setSyncStatus(status) {
+    const el = $('sync-status');
+    if (!el) return;
+    if (!this.app.platform.hosted || status === 'offline') { el.hidden = true; return; }
+    el.hidden = false;
+    el.textContent = status === 'saving' ? '· saving…'
+      : status === 'error' ? '· sync error'
+      : '· synced';
   }
 
   // ------------------------------------------------------------- journey --
@@ -926,7 +944,7 @@ export class UI {
     board.entries.slice(0, 10).forEach((e, i) => {
       const tr = document.createElement('tr');
       if (e.me) tr.className = 'me';
-      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${this.fmtTime(e.elapsedSec)}</td><td>${e.score}</td>`;
+      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${e.elapsedSec != null ? this.fmtTime(e.elapsedSec) : '—'}</td><td>${e.score}</td>`;
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);

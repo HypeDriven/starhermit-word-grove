@@ -185,13 +185,13 @@ No module may mutate rules state except through a validated command. Rendering c
 
 ### Packaging and launch
 - Ship a browser distribution with `starhermit.txt` at its root, `name=Word Grove`, and `launch=index.html`. Keep source files, secrets, design documents, and source maps outside the uploaded distribution.
-- Read the game scope from the short-lived launch token rather than hard-coding a slug. Use same-origin `/api` and `/ws` routes when hosted. Refresh account tokens through the host shell; never persist access or launch tokens in local storage.
+- Read the launch token from the URL fragment (`#game_token=`) once and strip it; query-param fallbacks are local-dev only. Read the game scope from the token rather than hard-coding a slug. Use same-origin `/api` and `/ws` routes when hosted. Re-mint launch tokens with `POST /api/v1/games/{slug}/launch-token` on a 45-minute cadence; never persist access or launch tokens in local storage.
 - Synchronize countdowns and daily boundaries with `GET /api/v1/time` using round-trip-adjusted offset. Treat rate limits and structured `{"error":"..."}` responses as recoverable UI states.
 
 ### Identity, profile, presence, and preferences
-- Support guest practice locally, then offer account sign-in for durable progress. Use the profile display name and avatar only where identity is useful, honor profile privacy, and send throttled presence heartbeats while actively playing.
+- Support guest practice locally, then offer account sign-in for durable progress. Use the account nickname from `GET /api/v1/users/{userId}/profile` (never usernames) where identity is useful and honor profile privacy. Presence/activity/telemetry calls exist only for the local dev server — the hosted platform exposes no such routes to launch tokens.
 - Store accessibility, audio, graphics tier, tutorial completion, camera preference, and rules options through per-game settings. Declare desktop action bindings and read player overrides; touch mappings remain responsive UI controls.
-- Cloud-save progression as a versioned, checksummed document. Resolve conflicts by preserving both snapshots and asking the player when neither is a strict descendant. Never place credentials or private chat in saves.
+- Cloud-save progression as a versioned, checksummed document, mirrored to the one-slot cloud save (`GET`/`PUT /api/v1/me/cloud-saves/{slug}`, zip+base64; remote wins on conflict). localStorage remains the offline cache; saves are debounced and flushed on pagehide. Never place credentials or private chat in saves.
 
 ### Discovery, activity, and social layer
 - Start and end launch activity so playtime is accurate. Surface entitlement or catalog state only in host-owned chrome; the game itself must remain playable without promotional interruption.

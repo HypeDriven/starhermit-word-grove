@@ -3,7 +3,7 @@
 // resolving → results → progression), and the render/tick loop.
 
 import { loadSettings, saveSettings, loadProgress, saveProgress, loadBoards, saveBoards,
-         saveLastSnapshot, loadLastSnapshot, clearLastSnapshot } from './storage.js';
+         resolveProgressConflict, saveLastSnapshot, loadLastSnapshot, clearLastSnapshot } from './storage.js';
 import { AudioEngine } from './audio.js';
 import { Platform } from './platform.js';
 import { UI } from './ui.js';
@@ -24,9 +24,11 @@ class App {
     this.session = null;
     this.renderer = null;
     this.ui = new UI(this);
+    this.platform.onSyncStatus = (s) => this.ui.setSyncStatus(s);
     this.lastFrame = 0;
     this.hidden = false;
     this.resultsContext = null;
+    this.suppressCloudSave = false;
   }
 
   async boot() {
@@ -56,6 +58,15 @@ class App {
 
     this.audio.onCaption((t) => this.ui.caption(t));
     await this.platform.syncTime();
+    if (this.platform.hosted) {
+      // Identity first so the title shows the account nickname, then the
+      // cloud slot (remote wins on conflict), then token-refresh cadence.
+      await this.platform.loadIdentity();
+      const cloud = await this.platform.loadCloudSave();
+      if (cloud) this.applyCloudSave(cloud);
+      this.platform.scheduleTokenRefresh();
+      this.platform.attachCloudFlush();
+    }
     this.platform.activityStart();
     this.platform.startPresence();
     window.addEventListener('beforeunload', () => this.platform.activityEnd());
@@ -244,7 +255,7 @@ class App {
 
   // ------------------------------------------------------------- finish ----
 
-  finishRound(left = false) {
+  async finishRound(left = false) {
     const session = this.session;
     if (!session) { this.goHome(); return; }
     const summary = session.summary();
@@ -292,7 +303,12 @@ class App {
         p.lastDaily = today;
         if (p.dailyDays.length >= 7) this.unlock('streak-7', unlocked);
         board = this.recordScore('daily:' + today, summary);
-        this.submitHostedScore('daily:' + today, summary);
+        // Clients never submit scores; the host's script owns the board. Read
+        // the platform leaderboard and show it when one exists.
+        if (this.platform.hosted) {
+          const hostedBoard = await this.hostedDailyBoard();
+          if (hostedBoard) board = hostedBoard;
+        }
       }
       if (summary.mode === 'challenge') {
         const cid = session.level.challenge.id;
@@ -345,7 +361,7 @@ class App {
 
   recordScore(boardId, summary) {
     const entry = {
-      name: this.progress.displayName,
+      name: this.platform.nickname || this.progress.displayName,
       score: summary.score,
       completed: summary.completed,
       invalidCount: summary.invalidCount,
@@ -366,23 +382,17 @@ class App {
     b.entries.sort(compareResults);
     b.entries = b.entries.slice(0, 50);
     b.entries.forEach((e) => { e.me = e.sessionId === entry.sessionId; });
-    saveBoards(boards);
+    this.saveBoards(boards);
     return { title: 'Local board', entries: b.entries, casual: !this.platform.hosted };
   }
 
-  async submitHostedScore(boardId, summary) {
-    if (!this.platform.hosted) return;
-    const res = await this.platform.submitScore({
-      board: boardId,
-      score: summary.score,
-      ruleset: summary.ruleset,
-      contentVersion: summary.contentVersion,
-      seed: summary.seed,
-      assists: { hints: summary.hintsUsed },
-      durationSec: Math.round(summary.elapsedSec),
-      replay: summary.replay,
-    });
-    if (res?.error) this.ui.toast('Score saved locally — server unreachable (casual board)');
+  // Read-only view of the platform leaderboard for today's daily. Personal
+  // bests stay in the local/cloud-saved boards; scores reach the host board
+  // only through the host's script, never from this client.
+  async hostedDailyBoard() {
+    const view = await this.platform.fetchLeaderboard({ pageSize: 10 });
+    if (view.error || !view.entries.length) return null;
+    return { title: 'Daily board', entries: view.entries, casual: false };
   }
 
   getChaseBoard() {
@@ -430,7 +440,39 @@ class App {
   }
 
   saveSettings() { saveSettings(this.settings); }
-  saveProgress() { saveProgress(this.progress); }
+  saveProgress() {
+    saveProgress(this.progress);
+    this.queueCloudSave();
+  }
+  saveBoards(b) {
+    this.boards = b;
+    saveBoards(b);
+    this.queueCloudSave();
+  }
+
+  // localStorage stays the offline cache; the cloud slot is a mirror of the
+  // same documents. Debounced by the platform (2 s) and flushed on pagehide.
+  queueCloudSave() {
+    if (this.suppressCloudSave || !this.platform.hosted) return;
+    this.platform.queueCloudSave({ progress: this.progress, boards: this.boards });
+  }
+
+  // Remote-preferred merge of the cloud snapshot into local state.
+  applyCloudSave(cloud) {
+    this.suppressCloudSave = true;
+    try {
+      if (cloud.progress) {
+        const res = resolveProgressConflict(this.progress, cloud.progress);
+        this.progress = res.winner || res.remote || this.progress;
+      }
+      if (cloud.boards && cloud.boards.boards) this.boards = cloud.boards;
+      saveProgress(this.progress);
+      saveBoards(this.boards);
+      this.ui.refreshTitle();
+    } finally {
+      this.suppressCloudSave = false;
+    }
+  }
 }
 
 const app = new App();

@@ -185,6 +185,7 @@ html, body {
 
 .profile-line { color: #e8e0c8; font-size: 0.85em; margin: 0; animation: rise 0.5s 0.2s ease both; }
 .profile-line .linklike { color: #ffd76a; }
+.profile-line .sync-status { opacity: 0.75; font-size: 0.9em; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 html.reduced-motion .title-hero, html.reduced-motion .title-menu,
