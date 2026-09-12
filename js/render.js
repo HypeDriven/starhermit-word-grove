@@ -528,18 +528,56 @@ export class GroveRenderer {
 
   // ---------------------------------------------------------------- loop ---
 
+  // CSS-pixel band of the canvas the wheel may use (between the crossword /
+  // tutorial stack above and the word controls below). Set from the UI.
+  setSafeBand(top, bottom, left, right) {
+    this.safeBand = { top: top || 0, bottom: bottom || 0, left: left || 0, right: right || 0 };
+    this.resize();
+  }
+
   resize() {
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
     const portrait = h > w;
     const cfg = portrait ? FRAMING.camera.portrait : FRAMING.camera.landscape;
     this.camera.fov = cfg.fov;
+    // Frame the wheel inside the band not covered by DOM chrome (view offset),
+    // then pull the authored camera back along its axis until the whole
+    // wheel (plus a letter's worth of margin) fits that band.
+    const band = this.safeBand || { top: 0, bottom: 0, left: 0, right: 0 };
+    const top = Math.min(band.top, h * 0.6), bottom = Math.min(band.bottom, h * 0.35);
+    const left = Math.min(band.left || 0, w * 0.5), right = Math.min(band.right || 0, w * 0.5);
+    const sh = Math.max(1, h - top - bottom), sw = Math.max(1, w - left - right);
+    if (sh < h * 0.3 || sw < w * 0.35) { this.camera.aspect = w / h; this.camera.clearViewOffset(); }
+    else { this.camera.aspect = sw / sh; this.camera.setViewOffset(sw, sh, -left, -top, w, h); }
     this.camera.updateProjectionMatrix();
-    this.camBase = new THREE.Vector3(...cfg.pos);
-    this.camLook = new THREE.Vector3(...cfg.look);
+    const look = new THREE.Vector3(...cfg.look);
+    const base = new THREE.Vector3(...cfg.pos);
+    const dir = base.clone().sub(look).normalize();
+    const r = FRAMING.wheelRadius + 0.55;
+    const pts = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * r, FRAMING.wheelY, FRAMING.wheelZ + Math.sin(a) * r));
+      pts.push(new THREE.Vector3(Math.cos(a) * r, FRAMING.wheelY + 0.5, FRAMING.wheelZ + Math.sin(a) * r));
+    }
+    const probe = new THREE.PerspectiveCamera(this.camera.fov, this.camera.aspect, 0.1, 200);
+    const v = new THREE.Vector3();
+    const d0 = base.distanceTo(look);
+    let d = d0 * 0.45;
+    for (let i = 0; i < 14; i++) {
+      probe.position.copy(look).addScaledVector(dir, d);
+      probe.lookAt(look); probe.updateMatrixWorld(); probe.updateProjectionMatrix();
+      let over = 0;
+      for (const q of pts) { v.copy(q).project(probe); over = Math.max(over, Math.abs(v.x) / 0.95, Math.abs(v.y) / 0.9); }
+      if (over <= 1) break;
+      d *= Math.min(1.6, over + 0.02);
+    }
+    this.camBase = look.clone().addScaledVector(dir, d);
+    this.camLook = look;
+    this.camera.position.copy(this.camBase);
+    this.camera.lookAt(this.camLook);
   }
 
   update(dtMs) {

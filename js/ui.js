@@ -101,6 +101,18 @@ export class UI {
     layer.addEventListener('lostpointercapture', () => { if (this.dragging) this.onDragCancel(); });
 
     window.addEventListener('resize', () => this.onResize());
+    // the crossword / tutorial stack changes height as words land and steps
+    // advance: keep the wheel framed below it without rebuilding the grid
+    {
+      let raf = 0;
+      const refit = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { this.syncSafeBand(); this.refreshWheelPositions(); }); };
+      if (typeof ResizeObserver === 'function') {
+        const ro = new ResizeObserver(refit);
+        for (const id of ['tutorial-bar', 'grid-wrap', 'wheel-controls', 'hud']) { const el = $(id); if (el) ro.observe(el); }
+      }
+      const tut = $('tutorial-bar');
+      if (tut) new MutationObserver(refit).observe(tut, { attributes: true, attributeFilter: ['hidden'] });
+    }
   }
 
   // ------------------------------------------------------------ screens ---
@@ -243,6 +255,8 @@ export class UI {
     $('btn-undo').hidden = !session.state.constraints.allowUndo;
     $('bonus-line').textContent = '';
     if (tutorial) this.startTutorial(); else this.stopTutorial();
+    this.syncSafeBand();
+    this.refreshWheelPositions();
     this.announce(`${this.modeLabel(session.level)} started. ${session.state.targets.length} words to find.`, false);
   }
 
@@ -988,10 +1002,39 @@ export class UI {
     this.announce(text, false);
   }
 
+  // Tell the renderer which vertical band the DOM chrome leaves for the wheel:
+  // below the tutorial bar / crossword grid, above the word controls.
+  syncSafeBand() {
+    const r = this.app.renderer;
+    if (!r || this.currentScreen !== 'screen-game') return;
+    const canvas = r.canvas.getBoundingClientRect();
+    const W = canvas.width || 1, H = canvas.height || 1;
+    let top = 0, bottom = 0, left = 0, right = 0;
+    for (const id of ['hud', 'tutorial-bar', 'grid-wrap']) {
+      const el = $(id);
+      if (!el || el.hidden) continue;
+      const b = el.getBoundingClientRect();
+      if (!b.height || !b.width) continue;
+      // elements living entirely in the left (or right) part of the canvas
+      // (landscape HUD / tutorial / grid columns) carve that side; bands
+      // that span the width carve the top
+      const bl = b.left - canvas.left, br = b.right - canvas.left;
+      if (br < W * 0.55 && b.width < W * 0.5) left = Math.max(left, br);
+      else if (bl > W * 0.45 && b.width < W * 0.5) right = Math.max(right, W - bl);
+      else top = Math.max(top, b.bottom - canvas.top);
+    }
+    // the word tray sits inside the wheel's band on purpose (current word
+    // above the wheel); only the controls row is reserved below
+    const controls = $('wheel-controls');
+    if (controls && !controls.hidden) bottom = Math.max(0, canvas.bottom - controls.getBoundingClientRect().top + 12);
+    r.setSafeBand(Math.max(0, top), bottom, left, right);
+  }
+
   onResize() {
     this.app.renderer?.resize();
     if (this.session && this.currentScreen === 'screen-game') {
       this.buildGrid();
+      this.syncSafeBand();
       this.refreshWheelPositions();
     }
   }

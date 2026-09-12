@@ -463,17 +463,24 @@ select, input[type=text] {
 
 /* Landscape mobile: narrow status rail on the side. */
 @media (max-height: 500px) and (orientation: landscape) {
+  /* HUD rail | tutorial + crossword column | wheel area (current word on
+     top, controls at the bottom) — the 3D wheel is framed in the third
+     column by the renderer's safe band. */
   #screen-game {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 110px minmax(180px, 38vw) 1fr;
     grid-template-rows: auto 1fr auto;
+    grid-template-areas: "hud tut tray" "hud grid wheel" "hud bonus ctrl";
     align-items: start;
     column-gap: 8px;
   }
-  #hud { grid-row: 1 / -1; flex-direction: column; height: 100%; justify-content: space-between; padding: 8px 0; }
+  #hud { grid-area: hud; flex-direction: column; height: 100%; justify-content: space-between; padding: 8px 0; }
   .hud-group { flex-direction: column; }
-  #grid-wrap { max-height: 56vh; max-width: 56vh; overflow: visible; }
-  #word-tray { margin-top: 0; }
-  .tutorial-bar { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: min(520px, 80vw); }
+  .tutorial-bar { grid-area: tut; position: static; transform: none; width: auto; margin-top: 4px; padding: 6px 10px; font-size: 0.9em; }
+  .tutorial-bar .btn { padding: 6px 10px; }
+  #grid-wrap { grid-area: grid; max-height: 60vh; max-width: 100%; overflow: visible; justify-self: start; margin-top: 6px; }
+  #word-tray { grid-area: tray; margin-top: 4px; }
+  #wheel-controls { grid-area: ctrl; align-self: end; }
+  #bonus-line { grid-area: bonus; }
   .grove-levels { grid-template-columns: repeat(8, 1fr); }
 }

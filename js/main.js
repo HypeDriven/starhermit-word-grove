@@ -338,8 +338,10 @@ class App {
     }
     const replay = nextLabel === 'Play again' || nextLabel === 'Try again';
     this.resultsContext = replay ? { replay: true } : { nextJourney, nextAction: nextLabel === 'Daily grove' ? 'daily' : null };
+    // unlocked achievements are listed inside the results panel; toasts on
+    // top of it would only cover the summary
     this.ui.showResults(summary, { stars, achievements: unlocked, board, nextLabel });
-    for (const key of unlocked) this.ui.toast(`Achievement: ${ACHIEVEMENTS.find((a) => a.key === key)?.name}`, true);
+    if (unlocked.length) this.ui.announce(`Achievements unlocked: ${unlocked.map((k) => ACHIEVEMENTS.find((a) => a.key === k)?.name).filter(Boolean).join(', ')}`, false);
   }
 
   unlock(key, unlockedList) {

@@ -75,7 +75,7 @@ The Three.js canvas fills the game region but is never the only UI. Menus, text,
 - **Wide desktop (≥1024 CSS px):** centered playfield, objective/progression rail on the left, contextual actions and social/status rail on the right. Maximum line length is 70 characters.
 - **Compact desktop/tablet:** playfield remains central; secondary rails collapse into drawers. Pointer hover may preview but never be required.
 - **Portrait mobile:** top safe-area status bar, square or perspective-fit playfield, bottom thumb-zone action tray, and sheet-based secondary panels. Never place critical controls under browser chrome or display cutouts.
-- **Landscape mobile:** reserve a narrow status rail; preserve at least 44×44 CSS-pixel targets and 8-pixel separation.
+- **Landscape mobile:** reserve a narrow status rail; preserve at least 44×44 CSS-pixel targets and 8-pixel separation. Layout is HUD rail | tutorial + crossword column | wheel area; in every orientation the renderer frames the letter wheel inside the canvas band not covered by the HUD, tutorial bar, crossword grid or controls (view offset + projection fit), so letters stay readable with the tutorial open.
 - React to resize, orientation, device-pixel-ratio, safe-area insets, virtual keyboard, and visibility changes without losing input or restarting the round.
 
 ### Screens and overlays
@@ -84,7 +84,7 @@ The Three.js canvas fills the game region but is never the only UI. Menus, text,
 - **Mode setup:** show rules, expected duration, player count, assists, and whether the result is ranked before commitment.
 - **Play HUD:** objective, progress, current actor/state, pause, and only context-relevant actions.
 - **Pause/settings:** resume first; audio, graphics, controls, accessibility, help, and leave are clearly separated.
-- **Results:** outcome headline, score breakdown, progress, achievements, comparison, replay/retry, and next recommended action.
+- **Results:** outcome headline, score breakdown, progress, achievements, comparison, replay/retry, and next recommended action. Achievements unlocked in the round appear only as chips inside the panel (announced to assistive tech), never as toasts over it.
 - **Help:** visual rule cards generated from current control mappings and representative legal states.
 - Daily challenge, local practice, pause, resume, results, and progression are first-class screens.
 
