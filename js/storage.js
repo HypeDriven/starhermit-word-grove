@@ -46,7 +46,9 @@ export const DEFAULT_SETTINGS = {
   version: 1,
   volumes: { music: 0.6, effects: 0.8, ambience: 0.5, voice: 0.8 },
   muted: false,
-  quality: 'auto', // auto | high | medium | low
+  // Graphics quality (see gfx.js): preset auto|low|balanced|high|ultra, render
+  // scale, adaptive resolution, frame-rate readout and per-category overrides.
+  graphics: { preset: 'auto', render_scale: 1, adaptive: true, show_fps: false },
   reducedMotion: false,
   highContrast: false,
   palette: 'default', // default | deuteranopia | protanopia | tritanopia
@@ -65,7 +67,17 @@ export const DEFAULT_SETTINGS = {
 };
 
 const SETTINGS_KEY = 'wordgrove:settings:v1';
-export function loadSettings() { return readDoc(SETTINGS_KEY, DEFAULT_SETTINGS); }
+export function loadSettings() {
+  const s = readDoc(SETTINGS_KEY, DEFAULT_SETTINGS);
+  if (!s.graphics || typeof s.graphics !== 'object') s.graphics = structuredClone(DEFAULT_SETTINGS.graphics);
+  // Older saves stored a single quality tier; carry it over as a preset.
+  if ('quality' in s) {
+    const mapped = { high: 'high', medium: 'balanced', low: 'low' }[s.quality];
+    if (mapped && s.graphics.preset === 'auto') s.graphics.preset = mapped;
+    delete s.quality;
+  }
+  return s;
+}
 export function saveSettings(s) { writeDoc(SETTINGS_KEY, s); }
 
 // ------------------------------------------------------------- progress ----

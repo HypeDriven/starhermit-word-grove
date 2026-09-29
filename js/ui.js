@@ -4,6 +4,7 @@
 
 import { TUTORIAL_STEPS, ACHIEVEMENTS, THEMES, groves, groveInfo, journeyLevelCount, CHALLENGES, PRACTICE_DIFFICULTIES } from './content.js';
 import { legalActions, totalScore } from './rules.js';
+import { GraphicsPanel } from './gfx-ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -74,6 +75,8 @@ export class UI {
     // Settings
     $('btn-settings-close').addEventListener('click', () => this.closeOverlay('overlay-settings'));
     $('btn-replay-tutorial').addEventListener('click', () => { this.closeOverlay('overlay-settings'); this.app.startLearn(); });
+    this.gfx = new GraphicsPanel(this.app);
+    this.gfx.build();
     this.bindSettings();
 
     // Help
@@ -771,6 +774,7 @@ export class UI {
       this.pausedByOverlay = true;
     }
     this.syncSettingsForm();
+    this.gfx.opened();
     this.openOverlay('overlay-settings');
   }
 
@@ -798,7 +802,6 @@ export class UI {
     bind('vol-voice', () => s().volumes.voice, (el) => { s().volumes.voice = +el.value; });
     bind('set-muted', () => s().muted, (el) => { s().muted = el.checked; });
     bind('set-captions', () => s().captions, (el) => { s().captions = el.checked; });
-    bind('set-quality', () => s().quality, (el) => { s().quality = el.value; });
     bind('set-reduced-motion', () => s().reducedMotion, (el) => { s().reducedMotion = el.checked; });
     bind('set-camera-sway', () => s().cameraSway, (el) => { s().cameraSway = el.checked; });
     bind('set-timer', () => s().showTimer, (el) => { s().showTimer = el.checked; });
@@ -812,7 +815,7 @@ export class UI {
   }
 
   syncSettingsForm() {
-    ['vol-music', 'vol-effects', 'vol-ambience', 'vol-voice', 'set-muted', 'set-captions', 'set-quality',
+    ['vol-music', 'vol-effects', 'vol-ambience', 'vol-voice', 'set-muted', 'set-captions',
       'set-reduced-motion', 'set-camera-sway', 'set-timer', 'set-high-contrast', 'set-palette',
       'set-text-size', 'set-left-handed', 'set-submit-release', 'set-haptics', 'set-analytics'].forEach((id) => {
       const el = $(id);
@@ -832,7 +835,7 @@ export class UI {
     html.classList.toggle('left-handed', s.leftHanded);
     this.app.audio.applyVolumes();
     this.app.platform.telemetryConsent = s.analyticsConsent;
-    this.app.renderer?.setQuality(s.quality);
+    this.app.renderer?.setGraphics(s.graphics);
     if (this.session) {
       this.app.renderer?.setLetters(this.session.state.letters);
       this.updateTimer();

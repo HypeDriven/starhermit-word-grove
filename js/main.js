@@ -47,6 +47,7 @@ class App {
         });
         if (this.renderer.failed) this.renderer = null;
       }
+      this.ui.gfx?.sync(); // Auto label shows the detected tier
     } catch (err) {
       console.warn('3D unavailable:', err);
       this.renderer = null;

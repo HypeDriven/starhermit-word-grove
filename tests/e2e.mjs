@@ -183,6 +183,48 @@ async function solveToCompletion(page) {
   throw new Error('solve loop did not reach completion within guard limit');
 }
 
+
+// Graphics settings through the visible Settings panel: preset Low → High,
+// one per-category override, applied live (canvas data-gfx-preset + summary),
+// persisted across a reload; then back to Auto so the rest of the run stays cheap.
+async function exerciseGraphics(page, vp, { touch = false } = {}) {
+  const tap = async (sel) => (touch ? page.tap(sel) : page.click(sel));
+  const preset = () => page.getAttribute('#scene-canvas', 'data-gfx-preset');
+  await tap('#btn-settings');
+  await page.waitForSelector('#overlay-settings', { state: 'visible' });
+  const autoLabel = await page.textContent('#set-quality option[value="auto"]');
+  if (!/\(.+\)/.test(autoLabel)) throw new Error(`auto label lacks detected tier: "${autoLabel}"`);
+  await page.selectOption('#set-quality', 'low');
+  await page.waitForFunction(() => document.getElementById('scene-canvas').dataset.gfxPreset === 'low');
+  await page.selectOption('#set-quality', 'high');
+  await page.waitForFunction(() => document.getElementById('scene-canvas').dataset.gfxPreset === 'high');
+  await page.waitForFunction(() => /2048² shadows/.test(document.getElementById('gfx-summary').textContent), null, { timeout: 5000 });
+  await page.selectOption('#gfx-bloom', 'off');
+  await page.waitForFunction(() => !/bloom/.test(document.getElementById('gfx-summary').textContent), null, { timeout: 5000 });
+  const scaleRow = await page.locator('#gfx-render-scale').boundingBox();
+  const panel = await page.locator('#overlay-settings .settings-panel').boundingBox();
+  if (!scaleRow || scaleRow.x + scaleRow.width > panel.x + panel.width + 1) throw new Error('render scale slider cut off');
+  await page.waitForTimeout(600); // a few High frames with the post chain
+  await tap('#btn-settings-close');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#screen-title', { state: 'visible', timeout: 15000 });
+  if ((await preset()) !== 'high') throw new Error(`preset not persisted (got ${await preset()})`);
+  await tap('#btn-settings');
+  await page.waitForSelector('#overlay-settings', { state: 'visible' });
+  if ((await page.inputValue('#set-quality')) !== 'high') throw new Error('quality select not restored');
+  if ((await page.inputValue('#gfx-bloom')) !== 'off') throw new Error('bloom override not restored');
+  await page.selectOption('#set-quality', 'high'); // choosing a preset clears overrides
+  if ((await page.inputValue('#gfx-bloom')) !== 'preset') throw new Error('preset did not clear overrides');
+  await page.selectOption('#set-quality', 'ultra');
+  await page.waitForFunction(() => document.getElementById('scene-canvas').dataset.gfxPreset === 'ultra');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: SHOT('graphics', vp) });
+  await page.selectOption('#set-quality', 'auto');
+  await tap('#btn-settings-close');
+  await page.waitForSelector('#overlay-settings', { state: 'hidden' });
+  ok(`${vp}: Graphics settings — Low/High/Ultra presets, bloom override, persisted across reload`);
+}
+
 // ---------- one full desktop pass ----------
 async function runDesktop(browser) {
   const errors = [];
@@ -190,7 +232,7 @@ async function runDesktop(browser) {
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() !== 'error' || browserNoise.test(m.text())) return;
+    if ((m.type() !== 'error' && m.type() !== 'warning') || browserNoise.test(m.text())) return;
     const url = m.location()?.url || '';
     if (/Failed to load resource/.test(m.text()) && /\/api\/|\/favicon/.test(url)) return;
     errors.push(`console: ${m.text()}`);
@@ -207,6 +249,7 @@ async function runDesktop(browser) {
     if (await page.locator('#compat-warning:visible').count()) await page.click('#btn-compat-ok');
     await page.screenshot({ path: SHOT('title', 'desktop') });
     ok('desktop: title screen visible');
+    await exerciseGraphics(page, 'desktop');
 
     // Play → Practice (Easy)
     await page.click('#btn-play');
@@ -293,7 +336,7 @@ async function runMobile(browser) {
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() !== 'error' || browserNoise.test(m.text())) return;
+    if ((m.type() !== 'error' && m.type() !== 'warning') || browserNoise.test(m.text())) return;
     const url = m.location()?.url || '';
     if (/Failed to load resource/.test(m.text()) && /\/api\/|\/favicon/.test(url)) return;
     errors.push(`console: ${m.text()}`);
@@ -308,6 +351,7 @@ async function runMobile(browser) {
     if (await page.locator('#compat-warning:visible').count()) await page.tap('#btn-compat-ok');
     await page.screenshot({ path: SHOT('title', 'mobile') });
     ok('mobile: title screen visible');
+    await exerciseGraphics(page, 'mobile', { touch: true });
 
     // Tap one wheel tile and confirm the word tray updates (real touch move).
     await page.tap('#btn-practice');

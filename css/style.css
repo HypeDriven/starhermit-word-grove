@@ -484,3 +484,19 @@ select, input[type=text] {
   #bonus-line { grid-area: bonus; }
   .grove-levels { grid-template-columns: repeat(8, 1fr); }
 }
+
+/* ---------- Graphics settings ---------- */
+.gfx-section select { min-height: 36px; font: inherit; }
+.gfx-scale { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; min-width: 0; }
+.gfx-scale input[type=range] { flex: 1; min-width: 80px; max-width: 200px; accent-color: var(--accent); }
+.gfx-scale output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gfx-summary { overflow-wrap: anywhere; }
+.gfx-note { color: var(--danger); }
+#fps-meter {
+  position: fixed; z-index: 40; left: calc(8px + var(--safe-left)); bottom: calc(8px + var(--safe-bottom));
+  font: 12px/1.4 ui-monospace, monospace; color: #fff; background: rgba(0, 0, 0, 0.55);
+  padding: 1px 6px; border-radius: 4px; pointer-events: none;
+}
+.gfx-section .select-row { flex-wrap: wrap; row-gap: 4px; }
+.gfx-section .select-row > span { flex: 1 1 8em; }
+.gfx-section .select-row select { flex: 1 1 12em; max-width: 100%; min-width: 0; }

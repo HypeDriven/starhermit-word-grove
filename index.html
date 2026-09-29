@@ -8,7 +8,7 @@
 <title>Word Grove</title>
 <meta name="description" content="Swipe through a letter wheel to grow a crossword grove.">
 <link rel="stylesheet" href="css/style.css">
-<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/three-addons/" } }</script>
 </head>
 <body>
 <div id="app">
@@ -175,14 +175,9 @@
           <label class="check-row"><input type="checkbox" id="set-muted"> Mute all</label>
           <label class="check-row"><input type="checkbox" id="set-captions"> Captions for audio cues</label>
         </fieldset>
-        <fieldset>
-          <legend>Graphics</legend>
-          <label class="select-row">Quality
-            <select id="set-quality">
-              <option value="auto">Auto</option><option value="high">High</option>
-              <option value="medium">Medium</option><option value="low">Low</option>
-            </select>
-          </label>
+        <fieldset id="gfx-section" class="gfx-section">
+          <legend id="gfx-legend">Graphics</legend>
+          <div id="gfx-controls"></div>
           <label class="check-row"><input type="checkbox" id="set-reduced-motion"> Reduced motion</label>
           <label class="check-row"><input type="checkbox" id="set-camera-sway"> Gentle camera sway</label>
           <label class="check-row"><input type="checkbox" id="set-timer"> Show timer</label>
