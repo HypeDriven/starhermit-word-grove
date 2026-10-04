@@ -2,16 +2,32 @@
 // machine (boot → title → mode-select → preparing → active ↔ paused →
 // resolving → results → progression), and the render/tick loop.
 
-import { loadSettings, saveSettings, loadProgress, saveProgress, loadBoards, saveBoards,
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, loadProgress, saveProgress, loadBoards, saveBoards,
          resolveProgressConflict, saveLastSnapshot, loadLastSnapshot, clearLastSnapshot } from './storage.js';
 import { AudioEngine } from './audio.js';
 import { Platform } from './platform.js';
+import { platformStrings } from './platform-i18n.js';
 import { UI } from './ui.js';
 import { Session, verifyReplay, sessionSeedCode, BUILD_VERSION } from './session.js';
 import { getJourneyLevel, getDailyLevel, getPracticeLevel, getChallengeLevel, getTutorialLevel,
          journeyLevelCount, utcDateISO, THEMES, themeById, ACHIEVEMENTS, validateLevel } from './content.js';
 import { compareResults } from './rules.js';
 import { hashString } from './rng.js';
+
+// Keyboard actions (KeyboardEvent.code), declared as control.* lines in
+// starhermit.txt. Letter typing to pick tiles is text input, not an action.
+const DEFAULT_BINDINGS = {
+  submit: ['Enter', 'NumpadEnter'],
+  cancel: ['Escape'],
+  delete_letter: ['Backspace'],
+  shuffle: ['KeyS'],
+  hint: ['KeyH'],
+  undo: ['KeyU'],
+  pause: ['KeyP'],
+};
+// Player preferences mirrored to the StarHermit settings KV.
+const SYNCED_SETTINGS = ['volumes', 'muted', 'graphics', 'reducedMotion', 'highContrast', 'palette', 'textSize',
+  'leftHanded', 'submitOnRelease', 'haptics', 'cameraSway', 'showTimer', 'analyticsConsent'];
 
 class App {
   constructor() {
@@ -25,6 +41,12 @@ class App {
     this.renderer = null;
     this.ui = new UI(this);
     this.platform.onSyncStatus = (s) => this.ui.setSyncStatus(s);
+    this.pt = platformStrings();
+    this.setBindings(DEFAULT_BINDINGS);
+    this.platform.onAuthChange = () => {
+      this.ui.toast(this.pt('signedOut'));
+      this.ui.refreshTitle();
+    };
     this.lastFrame = 0;
     this.hidden = false;
     this.resultsContext = null;
@@ -65,12 +87,12 @@ class App {
       await this.platform.loadIdentity();
       const cloud = await this.platform.loadCloudSave();
       if (cloud) this.applyCloudSave(cloud);
-      this.platform.scheduleTokenRefresh();
       this.platform.attachCloudFlush();
+      // Platform settings win over local ones; key bindings follow the
+      // player's StarHermit overrides.
+      this.adoptRemoteSettings(await this.platform.getSettings());
+      this.setBindings(await this.platform.loadBindings(DEFAULT_BINDINGS));
     }
-    this.platform.activityStart();
-    this.platform.startPresence();
-    window.addEventListener('beforeunload', () => this.platform.activityEnd());
 
     document.addEventListener('visibilitychange', () => {
       this.hidden = document.hidden;
@@ -442,7 +464,49 @@ class App {
     if (this.settings.haptics && navigator.vibrate) navigator.vibrate(pattern);
   }
 
-  saveSettings() { saveSettings(this.settings); }
+  saveSettings() {
+    saveSettings(this.settings);
+    if (!this.platform.hosted) return;
+    clearTimeout(this.settingsTimer);
+    this.settingsTimer = setTimeout(() => {
+      const out = {};
+      for (const k of SYNCED_SETTINGS) out[k] = this.settings[k];
+      this.platform.patchSettings(out);
+    }, 500);
+  }
+
+  adoptRemoteSettings(remote) {
+    let changed = false;
+    for (const k of SYNCED_SETTINGS) {
+      const v = remote?.[k];
+      if (v === undefined || v === null || typeof v !== typeof DEFAULT_SETTINGS[k]) continue;
+      this.settings[k] = typeof v === 'object' ? { ...DEFAULT_SETTINGS[k], ...v } : v;
+      changed = true;
+    }
+    if (!changed) return;
+    saveSettings(this.settings);
+    this.ui.applySettings();
+    this.ui.gfx?.sync();
+  }
+
+  // Keyboard actions route by KeyboardEvent.code (control.* in starhermit.txt).
+  setBindings(bindings) {
+    this.bindings = bindings;
+    this.codeAction = {};
+    for (const [action, codes] of Object.entries(bindings)) for (const c of codes) this.codeAction[c] = action;
+    this.ui.renderKeyHelp?.();
+  }
+
+  async copyInvite() {
+    const link = this.platform.inviteLink();
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      this.ui.toast(this.pt('inviteCopied'));
+    } catch {
+      this.ui.toast(this.pt('inviteFailed', { link }));
+    }
+  }
   saveProgress() {
     saveProgress(this.progress);
     this.queueCloudSave();

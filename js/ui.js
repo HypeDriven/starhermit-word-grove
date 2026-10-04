@@ -43,6 +43,8 @@ export class UI {
     $('btn-chase').addEventListener('click', () => { this.showScreen('screen-chase'); $('chase-seed').focus(); });
     $('btn-learn').addEventListener('click', () => app.startLearn());
     $('btn-settings').addEventListener('click', () => this.openSettings());
+    $('btn-signin').addEventListener('click', () => app.platform.signIn());
+    $('btn-invite').addEventListener('click', () => app.copyInvite());
     $('btn-help').addEventListener('click', () => this.openHelp());
     $('btn-theme').addEventListener('click', () => app.cycleTheme());
     $('btn-profile-name').addEventListener('click', () => this.editProfileName());
@@ -136,6 +138,11 @@ export class UI {
     // locally edited gardener name.
     $('btn-profile-name').textContent = this.app.platform.nickname || p.displayName;
     this.setSyncStatus(this.app.platform.syncState);
+    const pt = this.app.pt;
+    $('btn-signin').textContent = pt('signIn');
+    $('btn-invite').textContent = pt('invite');
+    $('btn-signin').hidden = !this.app.platform.canSignIn();
+    $('btn-invite').hidden = !(this.app.platform.hosted && this.app.platform.inviteLink());
     const nextIdx = this.app.nextJourneyIndex();
     $('journey-sub').textContent = nextIdx >= journeyLevelCount()
       ? 'All groves complete ✓'
@@ -848,7 +855,7 @@ export class UI {
   onKeyDown(e) {
     // Overlay handling first.
     if (this.anyOverlayOpen()) {
-      if (e.key === 'Escape') {
+      if (this.app.codeAction[e.code] === 'cancel') {
         const open = [...document.querySelectorAll('.overlay')].filter((o) => !o.hidden).pop();
         if (open) {
           if (open.id === 'overlay-pause') this.closePause(true);
@@ -860,14 +867,19 @@ export class UI {
     }
     if (this.currentScreen !== 'screen-game' || !this.session) return;
     if (e.target.matches('input, select, textarea')) return;
-    const b = this.app.settings.bindings;
+    const action = this.app.codeAction[e.code];
     const key = e.key;
-    if (/^[a-zA-Z]$/.test(key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    // Action shortcuts fire while no word is being spelled (they share keys
+    // with letters); otherwise the key types its letter.
+    if (plain && !this.selection.length) {
+      if (action === 'shuffle') { this.doShuffle(); return; }
+      if (action === 'hint') { this.doHint(); return; }
+      if (action === 'undo') { this.doUndo(); return; }
+      if (action === 'pause') { this.pauseGame(); return; }
+    }
+    if (/^[a-zA-Z]$/.test(key) && plain) {
       const lower = key.toLowerCase();
-      if (lower === b.shuffle && !this.selection.length) { this.doShuffle(); return; }
-      if (lower === b.hint && !this.selection.length) { this.doHint(); return; }
-      if (lower === b.undo && !this.selection.length) { this.doUndo(); return; }
-      if (lower === b.pause && !this.selection.length) { this.pauseGame(); return; }
       // Type a letter: append the first unused tile carrying it.
       const idx = this.session.state.letters.findIndex((l, i) => l === lower && !this.selection.includes(i));
       if (idx >= 0) {
@@ -879,14 +891,14 @@ export class UI {
       }
       return;
     }
-    if (key === b.deleteLetter || key === 'Backspace') {
+    if (action === 'delete_letter') {
       this.selection.pop();
       this.updateSelectionVisuals();
       e.preventDefault();
-    } else if (key === b.submit || key === 'Enter') {
+    } else if (action === 'submit') {
       this.submitCurrent();
       e.preventDefault();
-    } else if (key === b.cancel || key === 'Escape') {
+    } else if (action === 'cancel') {
       if (this.selection.length) this.clearSelection(true);
       else this.pauseGame();
       e.preventDefault();
@@ -994,6 +1006,27 @@ export class UI {
   caption(text) {
     if (!this.app.settings.captions) return;
     $('captions').textContent = text;
+  }
+
+  // Help text and wheel-button hints show the effective key bindings.
+  renderKeyHelp() {
+    const b = this.app.bindings;
+    if (!b) return;
+    const glyph = { Escape: 'Esc', Enter: 'Enter', NumpadEnter: 'Num Enter', Backspace: 'Backspace' };
+    const label = (c) => glyph[c] || (/^Key[A-Z]$/.test(c) ? c.slice(3) : /^Digit\d$/.test(c) ? c.slice(5) : c);
+    const k = (a) => (b[a] || []).map(label).join('/');
+    const help = $('help-keys');
+    if (help) {
+      help.textContent = `Keyboard: type letters to spell · ${k('submit')} submit · ${k('delete_letter')} remove · ` +
+        `${k('shuffle')} shuffle · ${k('hint')} hint · ${k('undo')} undo · ${k('pause')}/${k('cancel')} pause · arrows + Space to pick letters with focus.`;
+    }
+    for (const [id, action, what] of [['btn-shuffle', 'shuffle', 'Shuffle'], ['btn-hint', 'hint', 'Hint'], ['btn-undo', 'undo', 'Undo'], ['btn-clear', 'cancel', 'Clear word'], ['btn-submit', 'submit', 'Submit word']]) {
+      const btn = $(id);
+      if (!btn) continue;
+      btn.title = `${what} (${k(action)})`;
+      const hint = btn.querySelector('.kbd');
+      if (hint && action !== 'submit') hint.textContent = (b[action] || []).map(label)[0] || '';
+    }
   }
 
   toast(text, gold = false) {

@@ -60,10 +60,6 @@ export const DEFAULT_SETTINGS = {
   showTimer: true,
   tutorialSeen: false,
   analyticsConsent: false,
-  bindings: {
-    submit: 'Enter', cancel: 'Escape', shuffle: 's', hint: 'h',
-    undo: 'u', pause: 'p', deleteLetter: 'Backspace', cameraReset: 'c',
-  },
 };
 
 const SETTINGS_KEY = 'wordgrove:settings:v1';

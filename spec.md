@@ -193,23 +193,26 @@ No module may mutate rules state except through a validated command. Rendering c
 
 ### Packaging and launch
 - Ship a browser distribution with `starhermit.txt` at its root, `name=Word Grove`, and `launch=index.html`. Keep source files, secrets, design documents, and source maps outside the uploaded distribution.
-- Read the launch token from the URL fragment (`#game_token=`) once and strip it; query-param fallbacks are local-dev only. Read the game scope from the token rather than hard-coding a slug. Use same-origin `/api` and `/ws` routes when hosted. Re-mint launch tokens with `POST /api/v1/games/{slug}/launch-token` on a 45-minute cadence; never persist access or launch tokens in local storage.
-- Synchronize countdowns and daily boundaries with `GET /api/v1/time` using round-trip-adjusted offset. Treat rate limits and structured `{"error":"..."}` responses as recoverable UI states.
+- `index.html` loads the canonical `starhermit-sdk.js` (unmodified copy of `tools/starhermit-sdk.js`) and calls `StarHermit.init()` before any module runs. The SDK reads `#game_token=` / `#access_token=`, strips it from the URL, takes the slug from the `game_scope` claim and renews the launch token; tokens never reach local storage. `js/platform.js` wraps the SDK.
+- Without a token the game makes no network calls at all (no presence, activity or telemetry; funnel events stay in memory). When renewal is refused it toasts "signed out", re-offers sign-in and keeps playing locally.
+- Hosted, daily boundaries use `GET /api/v1/time` with a round-trip-adjusted offset; failures fall back to the local clock.
 
 ### Identity, profile, presence, and preferences
-- Support guest practice locally, then offer account sign-in for durable progress. Use the account nickname from `GET /api/v1/users/{userId}/profile` (never usernames) where identity is useful and honor profile privacy. Presence/activity/telemetry calls exist only for the local dev server — the hosted platform exposes no such routes to launch tokens.
-- Store accessibility, audio, graphics tier, tutorial completion, camera preference, and rules options through per-game settings. Declare desktop action bindings and read player overrides; touch mappings remain responsive UI controls.
-- Cloud-save progression as a versioned, checksummed document, mirrored to the one-slot cloud save (`GET`/`PUT /api/v1/me/cloud-saves/{slug}`, zip+base64; remote wins on conflict). localStorage remains the offline cache; saves are debounced and flushed on pagehide. Never place credentials or private chat in saves.
+- Guests play locally under an editable gardener name. On `*.starhermit.com` without a token the title shows **Sign in with StarHermit**; it is hidden when signed in and when running locally.
+- Signed in, the gardener name is the profile nickname (fallback `Player <id prefix>`) and the title shows **Invite a friend**, which copies `StarHermit.inviteLink()` to the clipboard with a toast. These strings are localized in all nine locales.
+- Volumes, mute, graphics, reduced motion, high contrast, palette, text size, left-handed layout, submit-on-release, haptics, camera sway, timer and analytics consent are mirrored to the per-game settings KV on change; on start the platform values win over local ones.
+- Keyboard actions are declared as `control.*` lines in `starhermit.txt` (submit, cancel, delete letter, shuffle, hint, undo, pause) and matched by `event.code` through `StarHermit.loadBindings`; letter typing stays text input. Settings → Game help and the wheel-button hints show the effective keys. Touch mappings remain responsive UI controls.
+- Progress and local boards are cloud-saved together in the `game:<slug>` slot: loaded remote-first on boot (remote wins on conflict), mirrored on every save (debounced ~2 s), flushed on `pagehide`/hidden. localStorage remains the offline cache. Never place credentials or private chat in saves.
 
 ### Discovery, activity, and social layer
-- Start and end launch activity so playtime is accurate. Surface entitlement or catalog state only in host-owned chrome; the game itself must remain playable without promotional interruption.
-- Provide a compact friends panel for score comparison and invitations where appropriate. Respect presence visibility and do not expose a hidden or private profile through game UI.
-- Do not create gameplay chat or voice surfaces for the initial release; they are not relevant to the core solo loop. Friends-only leaderboard filtering and shareable challenge seeds supply the social layer without unnecessary communication permissions.
+- Entitlement or catalog state belongs to host-owned chrome; the game stays playable without promotional interruption. No launch-activity calls are made.
+- The invite link, shareable score-chase seeds and the platform board supply the social layer; there is no gameplay chat or voice in this solo game.
 
 ### Achievements and leaderboards
 - Declare a small static achievement set: first completion, mechanic mastery, a sustained streak, a difficult content milestone, and an accessibility-neutral long-term goal. Keys are stable, lowercase identifiers; unlocks are idempotent.
 - Provide global and friends-filtered boards for the primary metric plus a fair daily/weekly board. Include ruleset, content version, seed, assists, and duration with every submission; reject impossible or stale-version scores.
 - For globally competitive boards, validate score claims through a lightweight authoritative script using replayable input logs and deterministic seeds. If validation is unavailable, label the board casual and apply plausibility/rate checks.
+- The client never submits platform scores or achievements. Hosted, the daily results view reads the game's platform board with `StarHermit.leaderboard()` (nicknames via profiles); achievements stay in the cloud-saved progress.
 
 ### Sessions and transport
 - The initial game is solo. Use an authoritative JavaScript Game Script only for seeded daily sessions, replay validation, and durable achievement delivery; ordinary practice can run locally and offline after initial load.

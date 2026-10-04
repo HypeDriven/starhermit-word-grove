@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/three-addons/" } }</script>
 <script src="browser-guard.js"></script>
+<script src="starhermit-sdk.js"></script>
+<script>window.StarHermit && StarHermit.init();</script>
 </head>
 <body>
 <div id="app">
@@ -44,6 +46,8 @@
         <button class="btn btn-ghost" id="btn-theme">Theme: <span id="theme-name">Dawn</span></button>
         <button class="btn btn-ghost" id="btn-settings">Settings</button>
         <button class="btn btn-ghost" id="btn-help">Help</button>
+        <button class="btn btn-ghost" id="btn-signin" hidden>Sign in with StarHermit</button>
+        <button class="btn btn-ghost" id="btn-invite" hidden>Invite a friend</button>
       </div>
       <p class="profile-line">Gardener: <button class="linklike" id="btn-profile-name">Gardener</button> · <span id="flowers-count">0</span> blooms <span id="sync-status" class="sync-status" hidden></span></p>
     </section>
@@ -207,7 +211,7 @@
           <legend>Game</legend>
           <label class="check-row"><input type="checkbox" id="set-analytics"> Share anonymous usage stats</label>
           <button class="btn" id="btn-replay-tutorial">Replay tutorial</button>
-          <p class="fine">Keyboard: type letters to spell · Enter submit · Backspace remove · S shuffle · H hint · U undo · P/Esc pause · arrows + Space to pick letters with focus.</p>
+          <p class="fine" id="help-keys">Keyboard: type letters to spell · Enter submit · Backspace remove · S shuffle · H hint · U undo · P/Esc pause · arrows + Space to pick letters with focus.</p>
           <p class="fine">Gamepad: dpad/stick move focus · A pick letter · B remove · X shuffle · Y hint · RB submit · Start pause.</p>
         </fieldset>
       </div>
