@@ -487,6 +487,14 @@ select, input[type=text] {
   #wheel-controls { grid-area: ctrl; align-self: end; }
   #bonus-line { grid-area: bonus; }
   .grove-levels { grid-template-columns: repeat(8, 1fr); }
+  /* the title fits a short phone screen without scrolling */
+  #screen-title { gap: 8px; }
+  #screen-title .game-logo { font-size: 2.1rem; }
+  #screen-title .tagline { font-size: 0.85em; margin-top: 0; }
+  #screen-title .title-menu { gap: 8px; }
+  #screen-title .btn-big { font-size: 1.1em; padding: 0.45em 2em; }
+  #screen-title .title-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: min(680px, calc(94vw / var(--ui-scale, 1))); }
+  #screen-title .card-btn { padding: 0.4em 0.8em; gap: 0; }
 }
 
 /* ---------- Graphics settings ---------- */

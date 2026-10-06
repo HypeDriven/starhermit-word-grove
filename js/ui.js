@@ -127,7 +127,10 @@ export class UI {
     this.currentScreen = id;
     if (id === 'screen-chase') this.renderChaseBoard(this.app.getChaseBoard());
     const focusTarget = document.querySelector(`#${id} .btn-primary`) || document.querySelector(`#${id} button`);
-    if (focusTarget && id !== 'screen-game') setTimeout(() => focusTarget.focus(), 30);
+    // screens open at their top: hidden screens keep their scroll, and focusing
+    // a lower primary button must not scroll the heading away
+    const scr = $(id); if (scr) scr.scrollTop = 0;
+    if (focusTarget && id !== 'screen-game') setTimeout(() => focusTarget.focus({ preventScroll: true }), 30);
     this.announce(document.querySelector(`#${id}`)?.dataset.title || '', false);
   }
 
