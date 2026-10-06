@@ -77,6 +77,7 @@ The Three.js canvas fills the game region but is never the only UI. Menus, text,
 - **Portrait mobile:** top safe-area status bar, square or perspective-fit playfield, bottom thumb-zone action tray, and sheet-based secondary panels. Never place critical controls under browser chrome or display cutouts.
 - **Landscape mobile:** reserve a narrow status rail; preserve at least 44×44 CSS-pixel targets and 8-pixel separation. Layout is HUD rail | tutorial + crossword column | wheel area; in every orientation the renderer frames the letter wheel inside the canvas band not covered by the HUD, tutorial bar, crossword grid or controls (view offset + projection fit), so letters stay readable with the tutorial open.
 - React to resize, orientation, device-pixel-ratio, safe-area insets, virtual keyboard, and visibility changes without losing input or restarting the round.
+- **Large screens (above 1600×1000):** the shared `ui-scale.js` sets `--ui-scale` (`min(w/1600, h/1000)`, capped at 2.5); every DOM layer over the full-viewport canvas (screens, HUD, crossword, overlays, toasts, wheel tile buttons) zooms by it with viewport units divided by it, while the 3D canvas stays unzoomed and frames the wheel in the band the larger chrome leaves. Wheel tile buttons are placed from projected visual pixels divided by the scale, and the drag hit radius grows with it.
 
 ### Screens and overlays
 

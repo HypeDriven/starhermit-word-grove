@@ -446,7 +446,9 @@ export class UI {
     this.tileCenters = this.tileButtons.map((b, i) => {
       let p = this.app.renderer?.projectTile(i);
       if (!p) p = this.fallbackTilePosition(i, n);
-      b.style.transform = `translate(${p.x}px, ${p.y}px)`;
+      // p is in visual px; the wheel layer is zoomed by --ui-scale
+      const z = window.UIScale?.value || 1;
+      b.style.transform = `translate(${p.x / z}px, ${p.y / z}px)`;
       return p;
     });
   }
@@ -485,7 +487,8 @@ export class UI {
   }
 
   hitTile(x, y) {
-    let best = null, bestD = 46 * 46;
+    const r = 46 * (window.UIScale?.value || 1); // tile centres and pointer are visual px
+    let best = null, bestD = r * r;
     this.tileCenters.forEach((c, i) => {
       if (!c) return;
       const d = (c.x - x) ** 2 + (c.y - y) ** 2;
@@ -746,7 +749,12 @@ export class UI {
     this.lastFocus = document.activeElement;
     $(id).hidden = false;
     const first = $(id).querySelector('.btn-primary, button');
-    setTimeout(() => first?.focus(), 30);
+    // focusing the primary button (often Done at the bottom of a tall panel) must
+    // not scroll the panel's heading away: open every overlay at its top
+    setTimeout(() => {
+      first?.focus({ preventScroll: true });
+      for (const el of [$(id), ...$(id).querySelectorAll('*')]) if (el.scrollTop) el.scrollTop = 0;
+    }, 30);
   }
 
   closeOverlay(id) {
@@ -1062,7 +1070,7 @@ export class UI {
     // the word tray sits inside the wheel's band on purpose (current word
     // above the wheel); only the controls row is reserved below
     const controls = $('wheel-controls');
-    if (controls && !controls.hidden) bottom = Math.max(0, canvas.bottom - controls.getBoundingClientRect().top + 12);
+    if (controls && !controls.hidden) bottom = Math.max(0, canvas.bottom - controls.getBoundingClientRect().top + 12 * (window.UIScale?.value || 1));
     r.setSafeBand(Math.max(0, top), bottom, left, right);
   }
 
