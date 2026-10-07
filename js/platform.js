@@ -117,7 +117,23 @@ export class Platform {
 
   // ---------------------------------------------------------- leaderboards --
 
-  // Clients never submit scores; read the game's platform board and resolve
+  // Post a finished round's total to the `high-score` board (score-script.js)
+  // via StarHermit.submitScores; resolves {posted, rank} — the player's rank on
+  // that board, or null. Signed out: no request.
+  async postHighScore(total) {
+    if (!this.hosted) return { posted: false, rank: null };
+    try {
+      const keys = await this.sh.submitScores({ 'high-score': total });
+      if (!keys || keys.indexOf('high-score') < 0) return { posted: false, rank: null };
+      try {
+        const r = await this.sh.leaderboard('high-score', { pageSize: 100 });
+        const me = ((r && r.items) || []).find((i) => i.userId === this.sh.userId);
+        return { posted: true, rank: me ? me.rank : null };
+      } catch { return { posted: true, rank: null }; }
+    } catch { return { posted: false, rank: null }; }
+  }
+
+  // Read the game's default platform board (the high-score board) and resolve
   // user ids to nicknames.
   async fetchLeaderboard({ friendsOnly = false, page = 1, pageSize = 10 } = {}) {
     if (!this.hosted) return { error: 'offline', entries: [] };

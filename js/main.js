@@ -326,8 +326,7 @@ class App {
         p.lastDaily = today;
         if (p.dailyDays.length >= 7) this.unlock('streak-7', unlocked);
         board = this.recordScore('daily:' + today, summary);
-        // Clients never submit scores; the host's script owns the board. Read
-        // the platform leaderboard and show it when one exists.
+        // Hosted, show the platform high-score board (top entries) when it exists.
         if (this.platform.hosted) {
           const hostedBoard = await this.hostedDailyBoard();
           if (hostedBoard) board = hostedBoard;
@@ -364,6 +363,7 @@ class App {
     // unlocked achievements are listed inside the results panel; toasts on
     // top of it would only cover the summary
     this.ui.showResults(summary, { stars, achievements: unlocked, board, nextLabel });
+    this.postHighScore(summary, left);
     if (unlocked.length) this.ui.announce(`Achievements unlocked: ${unlocked.map((k) => ACHIEVEMENTS.find((a) => a.key === k)?.name).filter(Boolean).join(', ')}`, false);
   }
 
@@ -414,10 +414,26 @@ class App {
   // Read-only view of the platform leaderboard for today's daily. Personal
   // bests stay in the local/cloud-saved boards; scores reach the host board
   // only through the host's script, never from this client.
+  // Signed in, every finished round except Learn lessons (and rounds left
+  // early) posts its total to the platform high-score board; the results
+  // screen shows the rank line.
+  postHighScore(summary, left) {
+    const line = document.getElementById('results-lb');
+    if (!line) return;
+    if (!this.platform.hosted || summary.mode === 'learn' || left || summary.terminalReason === 'abandoned') { line.hidden = true; return; }
+    const s = this.session;
+    line.hidden = false;
+    line.textContent = this.pt('lbPosting');
+    this.platform.postHighScore(Math.max(0, Math.round(summary.score))).then((r) => {
+      if (this.session !== s) return;
+      line.textContent = !r.posted ? this.pt('lbNotPosted') : r.rank ? this.pt('lbRank', { rank: r.rank }) : this.pt('lbPosted');
+    });
+  }
+
   async hostedDailyBoard() {
     const view = await this.platform.fetchLeaderboard({ pageSize: 10 });
     if (view.error || !view.entries.length) return null;
-    return { title: 'Daily board', entries: view.entries, casual: false };
+    return { title: 'High-score board', entries: view.entries, casual: false };
   }
 
   getChaseBoard() {
