@@ -50,7 +50,7 @@ export class AudioEngine {
       const mk = (name) => {
         const g = this.ctx.createGain();
         g.connect(this.master);
-        this.buses[name] = g;
+        this.buses[name] = (globalThis.GameOptions ? globalThis.GameOptions.tagBus(g, name) : g);
         return g;
       };
       this.master = this.ctx.createGain();
@@ -81,7 +81,7 @@ export class AudioEngine {
   blip(freq, dur, type = 'sine', gain = 0.2, bus = 'effects', when = 0) {
     if (!this.ensure()) return;
     const t = this.ctx.currentTime + when;
-    const o = this.ctx.createOscillator();
+    const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createOscillator(), bus) : this.ctx.createOscillator());
     const g = this.ctx.createGain();
     o.type = type; o.frequency.value = freq;
     g.gain.setValueAtTime(0, t);
@@ -98,7 +98,7 @@ export class AudioEngine {
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), bus) : this.ctx.createBufferSource()); src.buffer = buf;
     const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
     const g = this.ctx.createGain(); g.gain.value = gain;
     src.connect(f); f.connect(g); g.connect(this.buses[bus]);
@@ -126,7 +126,7 @@ export class AudioEngine {
       return false;
     }
     if (entry.failed || !entry.buffer) return false;
-    const src = this.ctx.createBufferSource();
+    const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), name) : this.ctx.createBufferSource());
     src.buffer = entry.buffer;
     src.connect(this.buses.effects);
     src.start();
@@ -227,13 +227,13 @@ export class AudioEngine {
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
       const d = buf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(ctx.createBufferSource(), null) : ctx.createBufferSource()); src.buffer = buf; src.loop = true;
       const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1800;
       src.connect(f); f.connect(mk()); src.start();
       this.ambienceNodes.push(src);
     } else {
       // birds / crickets / wind: slow modulated pad + chirp scheduling
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = kind === 'wind' ? 90 : 140;
+      const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(ctx.createOscillator(), null) : ctx.createOscillator()); o.type = 'sine'; o.frequency.value = kind === 'wind' ? 90 : 140;
       const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400;
       o.connect(f); f.connect(mk()); o.start();
       this.ambienceNodes.push(o);

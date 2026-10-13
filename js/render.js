@@ -1137,13 +1137,13 @@ export class GroveRenderer {
       this.buildPost();
     }
     if (this.composer) {
-      try { this.composer.render(); return; } catch {
+      try { (globalThis.GameOptions ? globalThis.GameOptions.draw(this.composer.renderer, () => this.composer.render()) : this.composer.render()); return; } catch {
         this.postFailed = true;
         this.composer = null;
         this.postKey = 'none';
       }
     }
-    this.renderer.render(this.scene, this.camera);
+    (globalThis.GameOptions ? globalThis.GameOptions.draw(this.renderer, () => this.renderer.render(this.scene, this.camera)) : this.renderer.render(this.scene, this.camera));
   }
 
   update(dtMs) {
