@@ -3,10 +3,11 @@
 // resolving → results → progression), and the render/tick loop.
 
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, loadProgress, saveProgress, loadBoards, saveBoards,
-         resolveProgressConflict, saveLastSnapshot, loadLastSnapshot, clearLastSnapshot } from './storage.js';
+         mergeProgress, mergeBoards, saveLastSnapshot, loadLastSnapshot, clearLastSnapshot } from './storage.js';
 import { AudioEngine } from './audio.js';
 import { Platform } from './platform.js';
 import { platformStrings } from './platform-i18n.js';
+import { t, tn, locale, onLanguage, themeName } from './i18n.js';
 import { UI } from './ui.js';
 import { Session, verifyReplay, sessionSeedCode, BUILD_VERSION } from './session.js';
 import { getJourneyLevel, getDailyLevel, getPracticeLevel, getChallengeLevel, getTutorialLevel,
@@ -41,7 +42,12 @@ class App {
     this.renderer = null;
     this.ui = new UI(this);
     this.platform.onSyncStatus = (s) => this.ui.setSyncStatus(s);
-    this.pt = platformStrings();
+    this.pt = platformStrings(locale());
+    this.lbState = null;
+    onLanguage(() => {
+      this.pt = platformStrings(locale());
+      this.ui.relocalize();
+    });
     this.setBindings(DEFAULT_BINDINGS);
     this.platform.onAuthChange = () => {
       this.ui.toast(this.pt('signedOut'));
@@ -79,15 +85,22 @@ class App {
       document.getElementById('compat-warning').hidden = false;
     }
 
-    this.audio.onCaption((t) => this.ui.caption(t));
+    this.audio.onCaption((key) => this.ui.caption(t(key)));
     await this.platform.syncTime();
     if (this.platform.hosted) {
       // Identity first so the title shows the account nickname, then the
-      // cloud slot (remote wins on conflict), then token-refresh cadence.
+      // cloud slot (merged with this device's progress), then token-refresh cadence.
       await this.platform.loadIdentity();
       const cloud = await this.platform.loadCloudSave();
-      if (cloud) this.applyCloudSave(cloud);
+      if (cloud && this.applyCloudSave(cloud)) this.queueCloudSave(); // write the merge back
       this.platform.attachCloudFlush();
+      // Another device saved since our load (conditional write refused):
+      // reload, merge both sides and save again.
+      this.platform.onConflict = async () => {
+        const latest = await this.platform.loadCloudSave();
+        if (latest) this.applyCloudSave(latest);
+        this.queueCloudSave();
+      };
       // Platform settings win over local ones; key bindings follow the
       // player's StarHermit overrides.
       this.adoptRemoteSettings(await this.platform.getSettings());
@@ -145,7 +158,7 @@ class App {
     const errors = validateLevel(level);
     if (errors.length) {
       console.error('Defective content', level.id, errors);
-      this.ui.toast('This content failed validation and is excluded from play.');
+      this.ui.toast(t('contentFailed'));
       this.platform.track('error', { category: 'content-validation' });
       return;
     }
@@ -252,7 +265,7 @@ class App {
     this.startRound(level);
     // The hash-based WG- code only names the board; sharing it can't
     // reproduce the grove. The raw seed round-trips through the seed form.
-    this.ui.toast(`Seed “${seed}” — share it so friends play the same grove`, true);
+    this.ui.toast(t('chaseToast', { seed }), true);
     this.chaseSeed = seed;
   }
 
@@ -266,7 +279,7 @@ class App {
     this.audio.event('ui');
     this.ui.refreshTitle();
     const locked = Object.values(THEMES).find((t) => this.progress.flowers < t.unlock);
-    if (locked) this.ui.toast(`${next.name} theme · next theme “${locked.name}” at ${locked.unlock} blooms`);
+    if (locked) this.ui.toast(t('themeToast', { theme: themeName(next.id, next.name), next: themeName(locked.id, locked.name), n: locked.unlock }));
   }
 
   nextJourneyIndex() {
@@ -298,7 +311,8 @@ class App {
 
     let stars = 0;
     let nextJourney = null;
-    let nextLabel = null;
+    let nextLabel = null; // string key (results button), with nextVars
+    let nextVars = null;
     let board = null;
 
     if (summary.completed) {
@@ -306,7 +320,7 @@ class App {
       if (summary.mode === 'learn') {
         p.tutorialDone = true;
         this.unlock('quick-study', unlocked);
-        nextLabel = 'Start journey';
+        nextLabel = 'startJourney';
         nextJourney = 0;
       }
       if (summary.mode === 'journey') {
@@ -317,8 +331,8 @@ class App {
           p.journey[idx] = { score: summary.score, stars, bestSec: Math.round(summary.elapsedSec), completedAt: Date.now() };
         } else if (stars > prev.stars) prev.stars = stars;
         const next = idx + 1;
-        if (next < journeyLevelCount()) { nextJourney = next; nextLabel = `Stage ${next + 1}`; }
-        else { this.unlock('grove-master', unlocked); nextLabel = 'Daily grove'; }
+        if (next < journeyLevelCount()) { nextJourney = next; nextLabel = 'stageN'; nextVars = { n: next + 1 }; }
+        else { this.unlock('grove-master', unlocked); nextLabel = 'dailyGrove'; }
       }
       if (summary.mode === 'daily') {
         const today = this.todayISO();
@@ -342,9 +356,9 @@ class App {
       if (summary.mode === 'chase') {
         board = this.recordScore('chase:' + sessionSeedCode('chase:' + session.level.chaseSeed), summary);
       }
-      if (summary.mode === 'practice') nextLabel = 'Play again';
+      if (summary.mode === 'practice') nextLabel = 'playAgain';
     }
-    if (!left && !summary.completed) nextLabel = 'Try again';
+    if (!left && !summary.completed) nextLabel = 'tryAgain';
 
     // Mechanic mastery & long-term goals.
     const m = p.mechanicsUsed;
@@ -358,13 +372,17 @@ class App {
       this.goHome();
       return;
     }
-    const replay = nextLabel === 'Play again' || nextLabel === 'Try again';
-    this.resultsContext = replay ? { replay: true } : { nextJourney, nextAction: nextLabel === 'Daily grove' ? 'daily' : null };
+    const replay = nextLabel === 'playAgain' || nextLabel === 'tryAgain';
+    this.resultsContext = replay ? { replay: true } : { nextJourney, nextAction: nextLabel === 'dailyGrove' ? 'daily' : null };
     // unlocked achievements are listed inside the results panel; toasts on
     // top of it would only cover the summary
-    this.ui.showResults(summary, { stars, achievements: unlocked, board, nextLabel });
+    this.lbState = null;
+    this.ui.showResults(summary, { stars, achievements: unlocked, board, nextLabel, nextVars });
     this.postHighScore(summary, left);
-    if (unlocked.length) this.ui.announce(`Achievements unlocked: ${unlocked.map((k) => ACHIEVEMENTS.find((a) => a.key === k)?.name).filter(Boolean).join(', ')}`, false);
+    if (unlocked.length) {
+      const names = unlocked.map((k) => { const a = ACHIEVEMENTS.find((x) => x.key === k); return a ? tn('achievements', k, [a.name])[0] : null; }).filter(Boolean);
+      this.ui.announce(t('achievementsUnlocked', { list: names.join(', ') }), false);
+    }
   }
 
   unlock(key, unlockedList) {
@@ -408,7 +426,7 @@ class App {
     b.entries = b.entries.slice(0, 50);
     b.entries.forEach((e) => { e.me = e.sessionId === entry.sessionId; });
     this.saveBoards(boards);
-    return { title: 'Local board', entries: b.entries, casual: !this.platform.hosted };
+    return { titleKey: 'boardLocal', entries: b.entries, casual: !this.platform.hosted };
   }
 
   // Read-only view of the platform leaderboard for today's daily. Personal
@@ -423,23 +441,25 @@ class App {
     if (!this.platform.hosted || summary.mode === 'learn' || left || summary.terminalReason === 'abandoned') { line.hidden = true; return; }
     const s = this.session;
     line.hidden = false;
+    this.lbState = { key: 'lbPosting' };
     line.textContent = this.pt('lbPosting');
     this.platform.postHighScore(Math.max(0, Math.round(summary.score))).then((r) => {
       if (this.session !== s) return;
-      line.textContent = !r.posted ? this.pt('lbNotPosted') : r.rank ? this.pt('lbRank', { rank: r.rank }) : this.pt('lbPosted');
+      this.lbState = !r.posted ? { key: 'lbNotPosted' } : r.rank ? { key: 'lbRank', vars: { rank: r.rank } } : { key: 'lbPosted' };
+      line.textContent = this.pt(this.lbState.key, this.lbState.vars);
     });
   }
 
   async hostedDailyBoard() {
     const view = await this.platform.fetchLeaderboard({ pageSize: 10 });
     if (view.error || !view.entries.length) return null;
-    return { title: 'High-score board', entries: view.entries, casual: false };
+    return { titleKey: 'boardHigh', entries: view.entries, casual: false };
   }
 
   getChaseBoard() {
     if (!this.chaseSeed) return null;
     const b = this.boards.boards['chase:' + sessionSeedCode('chase:' + this.chaseSeed)];
-    return b ? { title: 'Score chase board', entries: b.entries, casual: true } : null;
+    return b ? { titleKey: 'boardChase', entries: b.entries, casual: true } : null;
   }
 
   // ------------------------------------------------------------- snapshot --
@@ -468,7 +488,7 @@ class App {
       }
       this.ui.enterGame(session, { tutorial: false });
       if (session.state.status === 'active') { session.pause(); }
-      this.ui.toast('Round restored — press resume when ready');
+      this.ui.toast(t('roundRestored'));
       this.ui.openOverlay('overlay-pause');
     } catch (e) {
       console.warn('snapshot restore failed', e);
@@ -540,21 +560,30 @@ class App {
     this.platform.queueCloudSave({ progress: this.progress, boards: this.boards });
   }
 
-  // Remote-preferred merge of the cloud snapshot into local state.
+  // Merge the cloud snapshot into local state (boot load, and after a refused
+  // conditional write): neither device's progress is dropped. Returns true
+  // when the merge differs from the cloud copy (so it needs writing back).
   applyCloudSave(cloud) {
     this.suppressCloudSave = true;
+    let changed = false;
     try {
       if (cloud.progress) {
-        const res = resolveProgressConflict(this.progress, cloud.progress);
-        this.progress = res.winner || res.remote || this.progress;
+        const merged = mergeProgress(cloud.progress, this.progress);
+        changed = changed || JSON.stringify({ ...merged, updatedAt: 0 }) !== JSON.stringify({ ...cloud.progress, updatedAt: 0 });
+        this.progress = merged;
+      } else changed = true;
+      if (cloud.boards && cloud.boards.boards) {
+        const mb = mergeBoards(cloud.boards, this.boards);
+        changed = changed || JSON.stringify(mb) !== JSON.stringify(cloud.boards);
+        this.boards = mb;
       }
-      if (cloud.boards && cloud.boards.boards) this.boards = cloud.boards;
       saveProgress(this.progress);
       saveBoards(this.boards);
       this.ui.refreshTitle();
     } finally {
       this.suppressCloudSave = false;
     }
+    return changed;
   }
 }
 

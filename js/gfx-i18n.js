@@ -1,5 +1,5 @@
-// Word Grove — localized strings for the Graphics settings section.
-// The rest of the game is English-only; these strings follow navigator.language.
+// Word Grove — localized strings for the Graphics settings section, in the
+// game language (gfx-ui.js passes i18n.js locale()).
 
 const EN = {
   graphics: 'Graphics', quality: 'Quality', auto: 'Auto (detected: {tier})',

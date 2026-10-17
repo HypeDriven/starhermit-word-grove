@@ -3,14 +3,16 @@
 
 import { PRESETS, CATEGORIES, presetTier, choosePreset, resolve, describe, detectPreset } from './gfx.js';
 import { gfxStrings, pickLocale } from './gfx-i18n.js';
+import { locale as gameLocale } from './i18n.js';
 
 const fill = (s, tier) => s.replace('{tier}', tier);
 
 export class GraphicsPanel {
   constructor(app) {
     this.app = app;
-    this.locale = pickLocale(navigator.language);
+    this.locale = pickLocale(gameLocale());
     this.t = gfxStrings(this.locale);
+    this.bound = false;
     this.root = document.getElementById('gfx-controls');
     this.timer = null;
   }
@@ -46,10 +48,22 @@ export class GraphicsPanel {
     this.root.innerHTML = html;
     this.root.lang = this.locale;
 
-    this.root.addEventListener('change', (e) => this.onChange(e.target));
-    const scale = document.getElementById('gfx-render-scale');
-    scale.addEventListener('input', () => { document.getElementById('gfx-render-scale-value').textContent = `${scale.value}%`; });
+    // Listeners live on the stable root, so a rebuild (language change) never duplicates them.
+    if (!this.bound) {
+      this.bound = true;
+      this.root.addEventListener('change', (e) => this.onChange(e.target));
+      this.root.addEventListener('input', (e) => {
+        if (e.target.id === 'gfx-render-scale') document.getElementById('gfx-render-scale-value').textContent = `${e.target.value}%`;
+      });
+    }
     this.sync();
+  }
+
+  /** Re-label the panel in the current game language (rebuilds only #gfx-controls). */
+  setLocale() {
+    this.locale = pickLocale(gameLocale());
+    this.t = gfxStrings(this.locale);
+    this.build();
   }
 
   onChange(el) {

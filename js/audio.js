@@ -40,7 +40,8 @@ export class AudioEngine {
   }
 
   onCaption(fn) { this.captionListener = fn; }
-  caption(text) { if (this.captionListener) this.captionListener(text); }
+  // Caption cue by string key (strings.js cap_*); the UI localizes it.
+  caption(key) { if (this.captionListener) this.captionListener(key); }
 
   ensure() {
     if (!this.ctx) {
@@ -147,14 +148,14 @@ export class AudioEngine {
           this.blip(160, 0.18, 'sawtooth', 0.08);
           this.blip(120, 0.22, 'sawtooth', 0.06, 'effects', 0.05);
         }
-        this.caption('Word not accepted');
+        this.caption('cap_invalid');
         break;
       case 'word-bonus':
         if (!sampled) {
           this.blip(420 * v, 0.12, 'sine', 0.14);
           this.blip(560 * v, 0.16, 'sine', 0.12, 'effects', 0.07);
         }
-        this.caption('Bonus word');
+        this.caption('cap_bonus');
         break;
       case 'word-target': {
         if (!sampled) {
@@ -162,7 +163,7 @@ export class AudioEngine {
           [0, 4, 7].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.22, 'sine', 0.14, 'effects', i * 0.07));
           this.noise(0.3, 2400, 1.2, 0.05, 'effects', 0.05);
         }
-        this.caption('Word planted');
+        this.caption('cap_target');
         break;
       }
       case 'pangram': {
@@ -170,16 +171,16 @@ export class AudioEngine {
           const base = 440;
           [0, 4, 7, 12].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.3, 'triangle', 0.14, 'effects', i * 0.08));
         }
-        this.caption('Full wheel word');
+        this.caption('cap_pangram');
         break;
       }
-      case 'shuffle': if (!sampled) this.noise(0.25, 1200, 0.8, 0.1); this.caption('Wheel shuffled'); break;
+      case 'shuffle': if (!sampled) this.noise(0.25, 1200, 0.8, 0.1); this.caption('cap_shuffle'); break;
       case 'hint':
         if (!sampled) {
           this.blip(660, 0.2, 'sine', 0.12);
           this.blip(880, 0.25, 'sine', 0.1, 'effects', 0.1);
         }
-        this.caption('Hint revealed');
+        this.caption('cap_hint');
         break;
       case 'undo':
         if (!sampled) {
@@ -193,19 +194,19 @@ export class AudioEngine {
           [0, 4, 7, 12, 16].forEach((st, i) => this.blip(base * Math.pow(2, st / 12), 0.5, 'sine', 0.13, 'effects', i * 0.11));
           this.noise(0.8, 3200, 0.6, 0.05, 'effects', 0.2);
         }
-        this.caption('Level complete');
+        this.caption('cap_complete');
         break;
       }
       case 'failed':
         if (!sampled) [220, 185, 147].forEach((f, i) => this.blip(f, 0.35, 'sine', 0.1, 'effects', i * 0.15));
-        this.caption('Round over');
+        this.caption('cap_failed');
         break;
       case 'pause': if (!sampled) this.blip(280, 0.08, 'sine', 0.08); break;
       case 'resume': if (!sampled) this.blip(340, 0.08, 'sine', 0.08); break;
       case 'ui': if (!sampled) this.blip(500 * v, 0.04, 'triangle', 0.06); break;
       case 'achievement':
         if (!sampled) [523, 659, 784].forEach((f, i) => this.blip(f, 0.3, 'triangle', 0.1, 'effects', i * 0.09));
-        this.caption('Achievement unlocked');
+        this.caption('cap_achievement');
         break;
     }
   }

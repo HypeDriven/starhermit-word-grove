@@ -19,8 +19,11 @@ export class Platform {
     this.syncState = 'offline'; // offline | saving | synced | error
     this.onSyncStatus = null;
     this.onAuthChange = null; // (signedIn) => void
+    this.onConflict = null;   // saveconflict handler (main.js)
     if (sh) {
-      sh.on('saved', (ok) => this.hosted && this.setSyncStatus(ok ? 'synced' : 'error'));
+      sh.on('saved', (ok) => this.hosted && !sh.saveConflicted?.() && this.setSyncStatus(ok ? 'synced' : 'error'));
+      // A write lost to a newer save from another device: main.js merges and saves again.
+      sh.on('saveconflict', () => { if (this.hosted && this.onConflict) { this.setSyncStatus('saving'); this.onConflict(); } });
       sh.on('auth', (e) => {
         if (e && e.signedIn) return;
         this.hosted = false;
@@ -88,13 +91,13 @@ export class Platform {
     this.onSyncStatus?.(state);
   }
 
-  // Remote-first load: the cloud slot mirrors the localStorage cache, and on
-  // conflict the remote copy wins (see App.applyCloudSave).
+  // The cloud slot mirrors the localStorage cache; App.applyCloudSave merges
+  // it with this device's progress.
   async loadCloudSave() {
     if (!this.hosted) return null;
     this.setSyncStatus('saving');
     const data = await this.sh.loadJSON();
-    this.setSyncStatus('synced');
+    this.setSyncStatus(this.sh.saveLoadFailed?.() ? 'error' : 'synced');
     return data;
   }
 

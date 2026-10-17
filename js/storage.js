@@ -98,18 +98,57 @@ const PROGRESS_KEY = 'wordgrove:progress:v1';
 export function loadProgress() { return readDoc(PROGRESS_KEY, DEFAULT_PROGRESS); }
 export function saveProgress(p) { p.updatedAt = Date.now(); writeDoc(PROGRESS_KEY, p); }
 
-// Cloud-save conflict handling: keep both snapshots, prefer strict descendant.
-export function resolveProgressConflict(local, remote) {
-  if (!remote) return { winner: local, conflict: false };
-  if (!local) return { winner: remote, conflict: false };
-  if (remote.updatedAt > local.updatedAt && (remote.flowers ?? 0) >= (local.flowers ?? 0)
-    && Object.keys(remote.journey).length >= Object.keys(local.journey).length) {
-    return { winner: remote, conflict: false }; // remote is a descendant
+// Cloud-save merge (boot load and after a refused conditional write): keep
+// the better of both sides so no device's progress is lost — best score and
+// stars per journey stage, unions of achievements (earliest time), mechanics,
+// daily days, larger totals/flowers, best per challenge; the theme, name and
+// tutorial flag follow this device (`local`) unless it has none.
+export function mergeProgress(remote, local) {
+  if (!remote) return local;
+  if (!local) return remote;
+  const out = { ...DEFAULT_PROGRESS, ...remote, ...local };
+  const journey = { ...(remote.journey || {}) };
+  for (const [i, l] of Object.entries(local.journey || {})) {
+    const r = journey[i];
+    if (!r) { journey[i] = l; continue; }
+    const best = (l.score ?? 0) >= (r.score ?? 0) ? l : r;
+    journey[i] = { ...best, stars: Math.max(l.stars ?? 0, r.stars ?? 0), bestSec: Math.min(l.bestSec ?? Infinity, r.bestSec ?? Infinity) };
+    if (!Number.isFinite(journey[i].bestSec)) delete journey[i].bestSec;
   }
-  if (local.updatedAt >= remote.updatedAt && (local.flowers ?? 0) >= (remote.flowers ?? 0)) {
-    return { winner: local, conflict: false };
+  out.journey = journey;
+  out.flowers = Math.max(remote.flowers ?? 0, local.flowers ?? 0);
+  out.totals = {};
+  for (const k of new Set([...Object.keys(remote.totals || {}), ...Object.keys(local.totals || {})])) {
+    out.totals[k] = Math.max(remote.totals?.[k] ?? 0, local.totals?.[k] ?? 0);
   }
-  return { winner: null, conflict: true, local, remote }; // caller must ask the player
+  out.mechanicsUsed = { ...(remote.mechanicsUsed || {}), ...(local.mechanicsUsed || {}) };
+  out.achievements = { ...(remote.achievements || {}) };
+  for (const [k, v] of Object.entries(local.achievements || {})) out.achievements[k] = k in out.achievements ? Math.min(out.achievements[k], v) : v;
+  out.dailyDays = [...new Set([...(remote.dailyDays || []), ...(local.dailyDays || [])])].sort();
+  out.lastDaily = [remote.lastDaily, local.lastDaily].filter(Boolean).sort().pop() || null;
+  out.challengeBest = { ...(remote.challengeBest || {}) };
+  for (const [id, l] of Object.entries(local.challengeBest || {})) {
+    const r = out.challengeBest[id];
+    out.challengeBest[id] = !r || (l.score ?? 0) > (r.score ?? 0) ? l : r;
+  }
+  out.tutorialDone = !!(remote.tutorialDone || local.tutorialDone);
+  out.updatedAt = Math.max(remote.updatedAt ?? 0, local.updatedAt ?? 0);
+  return out;
+}
+
+/** Local boards: union per board, one entry per session, best first (50). */
+export function mergeBoards(remote, local) {
+  const out = { ...DEFAULT_BOARDS, ...remote, ...local, boards: {} };
+  const ids = new Set([...Object.keys(remote?.boards || {}), ...Object.keys(local?.boards || {})]);
+  for (const id of ids) {
+    const seen = new Set();
+    const entries = [...(local?.boards?.[id]?.entries || []), ...(remote?.boards?.[id]?.entries || [])]
+      .filter((e) => { const k = e.sessionId ?? JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 50);
+    out.boards[id] = { ...(remote?.boards?.[id] || {}), ...(local?.boards?.[id] || {}), entries };
+  }
+  return out;
 }
 
 // ----------------------------------------------------------- leaderboards --

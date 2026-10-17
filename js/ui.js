@@ -5,18 +5,23 @@
 import { TUTORIAL_STEPS, ACHIEVEMENTS, THEMES, groves, groveInfo, journeyLevelCount, CHALLENGES, PRACTICE_DIFFICULTIES } from './content.js';
 import { legalActions, totalScore } from './rules.js';
 import { GraphicsPanel } from './gfx-ui.js';
+import { t, tn, groveName, themeName, playerName } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
-const INVALID_TEXT = {
-  'too-short': 'Words need at least 3 letters',
-  'letters-unavailable': 'Those letters aren’t on the wheel',
-  'already-found': 'Already found',
-  'unknown-word': 'Not in the grove’s dictionary',
-  'out-of-moves': 'No submissions left',
-  'not-active': 'Round isn’t active',
-  'malformed-word': 'Letters only',
+// Session refusal reasons → string keys (strings.js).
+const INVALID_KEYS = {
+  'too-short': 'inv_tooShort',
+  'letters-unavailable': 'inv_unavailable',
+  'already-found': 'inv_found',
+  'unknown-word': 'inv_unknown',
+  'out-of-moves': 'inv_moves',
+  'not-active': 'inv_inactive',
+  'malformed-word': 'inv_malformed',
 };
+const invalidText = (reason) => (INVALID_KEYS[reason] ? t(INVALID_KEYS[reason]) : t('invalidWord'));
+// Screen names announced on navigation.
+const SCREEN_KEYS = { 'screen-journey': 'journey', 'screen-challenges': 'challengesH', 'screen-chase': 'scoreChase', 'screen-game': 'play', 'screen-results': 'screenResults' };
 
 export class UI {
   constructor(app) {
@@ -131,7 +136,7 @@ export class UI {
     // a lower primary button must not scroll the heading away
     const scr = $(id); if (scr) scr.scrollTop = 0;
     if (focusTarget && id !== 'screen-game') setTimeout(() => focusTarget.focus({ preventScroll: true }), 30);
-    this.announce(document.querySelector(`#${id}`)?.dataset.title || '', false);
+    this.announce(SCREEN_KEYS[id] ? t(SCREEN_KEYS[id]) : (document.querySelector(`#${id}`)?.dataset.title || ''), false);
   }
 
   refreshTitle() {
@@ -139,7 +144,7 @@ export class UI {
     $('flowers-count').textContent = p.flowers;
     // Hosted: the account nickname from the platform profile. Offline: the
     // locally edited gardener name.
-    $('btn-profile-name').textContent = this.app.platform.nickname || p.displayName;
+    $('btn-profile-name').textContent = this.app.platform.nickname || playerName(p.displayName);
     this.setSyncStatus(this.app.platform.syncState);
     const pt = this.app.pt;
     $('btn-signin').textContent = pt('signIn');
@@ -148,22 +153,23 @@ export class UI {
     $('btn-invite').hidden = !(this.app.platform.hosted && this.app.platform.inviteLink());
     const nextIdx = this.app.nextJourneyIndex();
     $('journey-sub').textContent = nextIdx >= journeyLevelCount()
-      ? 'All groves complete ✓'
-      : `${groveInfo(Math.floor(nextIdx / 8)).name} · stage ${(nextIdx % 8) + 1}`;
-    $('learn-sub').textContent = p.tutorialDone ? 'Replay lessons' : 'Start here';
-    $('btn-play').textContent = nextIdx >= journeyLevelCount() ? 'Play daily' : (nextIdx === 0 && !p.tutorialDone ? 'Learn & play' : 'Continue journey');
-    $('theme-name').textContent = THEMES[this.app.progress.selectedTheme]?.name || 'Dawn';
+      ? t('allGrovesDone')
+      : t('groveStage', { grove: groveName(Math.floor(nextIdx / 8), groveInfo(Math.floor(nextIdx / 8)).name), n: (nextIdx % 8) + 1 });
+    $('learn-sub').textContent = p.tutorialDone ? t('replayLessons') : t('startHere');
+    $('btn-play').textContent = nextIdx >= journeyLevelCount() ? t('playDaily') : (nextIdx === 0 && !p.tutorialDone ? t('learnAndPlay') : t('continueJourney'));
+    const theme = THEMES[this.app.progress.selectedTheme];
+    $('theme-name').textContent = themeName(theme?.id || 'dawn', theme?.name || 'Dawn');
     const dailyDone = p.lastDaily === this.app.todayISO();
-    $('daily-sub').textContent = dailyDone ? 'Done today ✓' : 'One grove per day';
+    $('daily-sub').textContent = dailyDone ? t('doneToday') : t('dailySub');
   }
 
   editProfileName() {
     if (this.app.platform.hosted) {
-      this.toast('Your gardener name comes from your StarHermit account');
+      this.toast(t('hostedName'));
       return;
     }
-    const name = prompt('Gardener name (shown on local boards):', this.app.progress.displayName);
-    if (name && name.trim()) {
+    const name = prompt(t('promptName'), playerName(this.app.progress.displayName));
+    if (name && name.trim() && name.trim() !== playerName('Gardener')) {
       this.app.progress.displayName = name.trim().slice(0, 20);
       this.app.saveProgress();
       this.refreshTitle();
@@ -176,9 +182,10 @@ export class UI {
     if (!el) return;
     if (!this.app.platform.hosted || status === 'offline') { el.hidden = true; return; }
     el.hidden = false;
-    el.textContent = status === 'saving' ? '· saving…'
-      : status === 'error' ? '· sync error'
-      : '· synced';
+    this.syncShown = status;
+    el.textContent = status === 'saving' ? t('syncSaving')
+      : status === 'error' ? t('syncError')
+      : t('syncSynced');
   }
 
   // ------------------------------------------------------------- journey --
@@ -191,7 +198,7 @@ export class UI {
       const block = document.createElement('div');
       block.className = 'grove-block';
       const done = Object.keys(this.app.progress.journey).filter((i) => Math.floor(i / 8) === g.index).length;
-      block.innerHTML = `<h3>${g.name} <small>${done}/8 · ${THEMES[g.theme].name}</small></h3>`;
+      block.innerHTML = `<h3>${escapeHtml(groveName(g.index, g.name))} <small>${escapeHtml(t('groveDone', { done, theme: themeName(g.theme, THEMES[g.theme].name) }))}</small></h3>`;
       const row = document.createElement('div');
       row.className = 'grove-levels';
       row.setAttribute('role', 'list');
@@ -203,7 +210,7 @@ export class UI {
         btn.className = 'btn level-node' + (locked ? ' locked' : '') + (idx === nextIdx ? ' current' : '') + (s === 7 ? ' mastery' : '');
         btn.disabled = locked;
         btn.setAttribute('role', 'listitem');
-        btn.setAttribute('aria-label', `Stage ${idx + 1}${s === 7 ? ' (mastery)' : ''}${rec ? `, ${rec.stars} stars` : ''}${locked ? ', locked' : ''}`);
+        btn.setAttribute('aria-label', t('stageN', { n: idx + 1 }) + (s === 7 ? t('masteryTag') : '') + (rec ? t('starsTag', { n: rec.stars }) : '') + (locked ? t('lockedTag') : ''));
         btn.innerHTML = `<span>${idx + 1}</span><span class="node-stars">${rec ? '★'.repeat(rec.stars) : s === 7 ? '✦' : ''}</span>`;
         btn.addEventListener('click', () => this.app.startJourney(idx));
         row.appendChild(btn);
@@ -221,34 +228,38 @@ export class UI {
       card.className = 'challenge-card';
       card.setAttribute('role', 'listitem');
       const best = this.app.progress.challengeBest[c.id];
-      card.innerHTML = `<div><strong>${c.label}</strong><p class="desc">${c.desc}</p></div>
-        <div class="best">${best ? `Best ${best.score}` : ''}</div>`;
+      const [label, desc] = tn('challenges', c.id, [c.label, c.desc]);
+      card.dataset.challenge = c.id;
+      card.innerHTML = `<div><strong>${escapeHtml(label)}</strong><p class="desc">${escapeHtml(desc)}</p></div>
+        <div class="best">${best ? escapeHtml(t('bestN', { n: best.score })) : ''}</div>`;
       const btn = document.createElement('button');
       btn.className = 'btn btn-primary';
-      btn.textContent = 'Play';
+      btn.textContent = t('play');
       btn.addEventListener('click', () => this.app.startChallenge(c.id));
       card.appendChild(btn);
       list.appendChild(card);
     });
   }
 
-  openPracticeSetup() {
+  openPracticeSetup(rerender = false) {
     const body = $('setup-body');
-    body.innerHTML = '<p>Unranked. Undo is allowed. Nothing here affects leaderboards.</p>';
+    const picked = body.querySelector('input[name=practice-diff]:checked')?.value || 'medium';
+    body.innerHTML = `<p>${escapeHtml(t('practiceText'))}</p>`;
     PRACTICE_DIFFICULTIES.forEach((d) => {
-      const label = document.createElement('label');
-      label.className = 'check-row';
-      label.innerHTML = `<input type="radio" name="practice-diff" value="${d.id}" ${d.id === 'medium' ? 'checked' : ''}> ${d.label} — <span class="fine">${d.note}</span>`;
-      body.appendChild(label);
+      const [label, note] = tn('difficulties', d.id, [d.label, d.note]);
+      const row = document.createElement('label');
+      row.className = 'check-row';
+      row.innerHTML = `<input type="radio" name="practice-diff" value="${d.id}" ${d.id === picked ? 'checked' : ''}> ${escapeHtml(label)} — <span class="fine">${escapeHtml(note)}</span>`;
+      body.appendChild(row);
     });
-    $('setup-title').textContent = 'Practice';
+    $('setup-title').textContent = t('practice');
     const start = $('btn-setup-start');
     start.onclick = () => {
       const diff = body.querySelector('input[name=practice-diff]:checked')?.value || 'medium';
       this.closeOverlay('overlay-setup');
       this.app.startPractice(diff);
     };
-    this.openOverlay('overlay-setup');
+    if (!rerender) this.openOverlay('overlay-setup');
   }
 
   // ----------------------------------------------------------- game start -
@@ -270,17 +281,39 @@ export class UI {
     if (tutorial) this.startTutorial(); else this.stopTutorial();
     this.syncSafeBand();
     this.refreshWheelPositions();
-    this.announce(`${this.modeLabel(session.level)} started. ${session.state.targets.length} words to find.`, false);
+    this.announce(t('roundStarted', { mode: this.modeLabel(session.level), n: session.state.targets.length }), false);
   }
 
   modeLabel(level) {
-    if (level.mode === 'journey') return `Journey · stage ${level.journeyIndex + 1}${level.mastery ? ' ✦' : ''}`;
-    if (level.mode === 'daily') return 'Daily grove';
-    if (level.mode === 'practice') return 'Practice';
-    if (level.mode === 'challenge') return `Challenge · ${level.challenge.label}`;
-    if (level.mode === 'learn') return 'Learn';
-    if (level.mode === 'chase') return 'Score chase';
+    if (level.mode === 'journey') return t('modeJourney', { n: level.journeyIndex + 1 }) + (level.mastery ? ' ✦' : '');
+    if (level.mode === 'daily') return t('modeDaily');
+    if (level.mode === 'practice') return t('practice');
+    if (level.mode === 'challenge') return t('modeChallenge', { name: tn('challenges', level.challenge.id, [level.challenge.label])[0] });
+    if (level.mode === 'learn') return t('learn');
+    if (level.mode === 'chase') return t('scoreChase');
     return level.mode;
+  }
+
+  /**
+   * Language changed: markup was re-applied by i18n.js; re-render what this
+   * class builds in code, in place (title, open lists, HUD, tutorial, results,
+   * open overlays). The round and its timer keep running.
+   */
+  relocalize() {
+    this.refreshTitle();
+    this.renderKeyHelp();
+    this.gfx?.setLocale?.();
+    if (this.currentScreen === 'screen-journey') this.renderJourney();
+    if (this.currentScreen === 'screen-challenges') this.renderChallenges();
+    if (this.currentScreen === 'screen-chase') this.renderChaseBoard(this.app.getChaseBoard());
+    if (!$('overlay-setup').hidden) this.openPracticeSetup(true);
+    if (this.session && this.currentScreen === 'screen-game') {
+      $('hud-mode').textContent = this.modeLabel(this.session.level);
+      this.updateHUD();
+      this.tileButtons.forEach((b, i) => b.setAttribute('aria-label', t('letterAria', { letter: this.session.state.letters[i].toUpperCase() })));
+      if (this.tutorial) this.renderTutorialStep();
+    }
+    if (this.currentScreen === 'screen-results' && this.lastResults) this.showResults(...this.lastResults, true);
   }
 
   onSessionEvent(type, ev) {
@@ -290,13 +323,13 @@ export class UI {
         this.clearSelection(false);
         if (ev.kind === 'target') {
           app.audio.event(ev.pangram ? 'pangram' : 'word-target');
-          this.feedback(ev.pangram ? `Full wheel! +${50}` : `“${ev.word}” planted!`, 'good');
+          this.feedback(ev.pangram ? t('fullWheel', { n: 50 }) : t('planted', { word: ev.word }), 'good');
           this.updateGrid(ev.word);
           app.renderer?.bloomWord('target', ev.word);
           app.haptic(30);
         } else {
           app.audio.event('word-bonus');
-          this.feedback(`Bonus word “${ev.word}”`, 'good');
+          this.feedback(t('bonusWord', { word: ev.word }), 'good');
           app.renderer?.bloomWord('bonus', ev.word);
           app.haptic(15);
         }
@@ -307,8 +340,8 @@ export class UI {
       }
       case 'invalid': {
         app.audio.event('invalid');
-        this.feedback(INVALID_TEXT[ev.reason] || ev.reason, 'error');
-        this.announce(INVALID_TEXT[ev.reason] || 'Invalid word', true);
+        this.feedback(invalidText(ev.reason), 'error');
+        this.announce(invalidText(ev.reason), true);
         this.shakeTray();
         this.clearSelection(false);
         app.haptic([20, 40, 20]);
@@ -325,7 +358,7 @@ export class UI {
       }
       case 'hint': {
         app.audio.event('hint');
-        this.feedback(`Hint: revealed “${ev.letter.toUpperCase()}”`, 'good');
+        this.feedback(t('hintRevealed', { letter: ev.letter.toUpperCase() }), 'good');
         this.updateGrid();
         app.renderer?.hintBloom();
         app.markMechanic('hint');
@@ -409,7 +442,7 @@ export class UI {
           const y = p.dir === 0 ? p.y : p.y + i;
           this.gridCells.get(x + ',' + y)?.classList.add('flash');
         }
-        this.announce(`“${flashWord}” placed on the grid.`, false);
+        this.announce(t('placedOnGrid', { word: flashWord }), false);
       }
     }
   }
@@ -424,7 +457,7 @@ export class UI {
       b.className = 'wheel-tile-btn';
       b.textContent = letter.toUpperCase();
       b.dataset.index = i;
-      b.setAttribute('aria-label', `Letter ${letter.toUpperCase()}`);
+      b.setAttribute('aria-label', t('letterAria', { letter: letter.toUpperCase() }));
       b.addEventListener('pointerdown', (e) => this.onTileDown(e, i));
       b.addEventListener('click', (e) => { /* keyboard activation */ if (!this.dragged) this.toggleTileKeyboard(i); });
       b.addEventListener('keydown', (e) => {
@@ -562,7 +595,7 @@ export class UI {
   clearSelection(announceIt) {
     this.selection = [];
     this.updateSelectionVisuals();
-    if (announceIt) this.announce('Word cleared', false);
+    if (announceIt) this.announce(t('wordCleared'), false);
   }
 
   submitCurrent() {
@@ -610,11 +643,11 @@ export class UI {
     if (!this.session) return;
     const s = this.session.state;
     const found = Object.values(s.found).filter((f) => f.kind === 'target').length;
-    $('hud-progress').textContent = `${found} / ${s.targets.length} words`;
+    $('hud-progress').textContent = t('wordsProgress', { found, total: s.targets.length });
     $('hud-score').textContent = totalScore(s);
     const bonus = this.session.remainingBonus();
     const bonusFound = Object.values(s.found).filter((f) => f.kind === 'bonus').length;
-    $('bonus-line').textContent = bonusFound ? `${bonusFound} bonus word${bonusFound > 1 ? 's' : ''} found · ${bonus} still hiding` : '';
+    $('bonus-line').textContent = bonusFound ? (bonusFound === 1 ? t('bonusLineOne', { left: bonus }) : t('bonusLineN', { n: bonusFound, left: bonus })) : '';
     const leg = legalActions(s);
     $('btn-shuffle').disabled = !leg.canShuffle;
     $('btn-hint').disabled = !leg.canHint;
@@ -623,7 +656,7 @@ export class UI {
     const moves = $('hud-moves');
     if (leg.movesRemaining !== null) {
       moves.hidden = false;
-      moves.textContent = `${leg.movesRemaining} tries`;
+      moves.textContent = t('tries', { n: leg.movesRemaining });
       moves.classList.toggle('warning', leg.movesRemaining <= 2);
     } else moves.hidden = true;
     this.updateTimer();
@@ -640,11 +673,11 @@ export class UI {
     if (leg.timeRemainingSec !== null) {
       sec = leg.timeRemainingSec;
       el.classList.toggle('warning', sec <= 30 && s.status === 'active');
-      el.title = 'Time remaining';
+      el.title = t('titleRemaining');
     } else {
       sec = this.session.elapsedSec();
       el.classList.remove('warning');
-      el.title = 'Elapsed time';
+      el.title = t('titleElapsed');
     }
     el.textContent = `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
   }
@@ -718,9 +751,10 @@ export class UI {
   renderTutorialStep() {
     const st = TUTORIAL_STEPS[this.tutorial.step];
     if (!st) { this.stopTutorial(); return; }
-    $('tutorial-title').textContent = `${this.tutorial.step + 1}/${TUTORIAL_STEPS.length} · ${st.title}`;
-    $('tutorial-body').textContent = st.body;
-    $('tutorial-next').textContent = st.waitFor ? 'Waiting for you…' : (this.tutorial.step === TUTORIAL_STEPS.length - 1 ? 'Play!' : 'Next');
+    const [title, body] = tn('tutorial', st.id, [st.title, st.body]);
+    $('tutorial-title').textContent = t('stepTitle', { n: this.tutorial.step + 1, total: TUTORIAL_STEPS.length, title });
+    $('tutorial-body').textContent = body;
+    $('tutorial-next').textContent = st.waitFor ? t('waitingForYou') : (this.tutorial.step === TUTORIAL_STEPS.length - 1 ? t('playBang') : t('next'));
     $('tutorial-next').disabled = !!st.waitFor;
     $('tutorial-next').onclick = () => this.advanceTutorial();
     $('tutorial-skip').onclick = () => { this.stopTutorial(); this.app.progress.tutorialDone = true; this.app.saveProgress(); };
@@ -918,14 +952,17 @@ export class UI {
 
   // --------------------------------------------------------------- results -
 
-  showResults(summary, extras) {
-    this.showScreen('screen-results');
+  // extras.nextLabel is a string key; `rerender` redraws in a new language
+  // without moving focus or announcing again.
+  showResults(summary, extras, rerender = false) {
+    this.lastResults = [summary, extras];
+    if (!rerender) this.showScreen('screen-results');
     $('results-headline').textContent = summary.completed
-      ? ['Grove in full bloom!', 'Beautifully grown!', 'A flourishing grove!'][summary.sessionId.length % 3]
-      : ({ 'time-expired': 'The sun set on this grove', 'out-of-moves': 'No tries remaining', 'abandoned': 'Round left early' }[summary.terminalReason] || 'Round over');
+      ? t(['head1', 'head2', 'head3'][summary.sessionId.length % 3])
+      : t({ 'time-expired': 'headTime', 'out-of-moves': 'headMoves', 'abandoned': 'headLeft' }[summary.terminalReason] || 'headOver');
     $('results-sub').textContent = summary.completed
-      ? `${summary.wordsFound} words planted · ${summary.bonusFound} bonus · ${this.fmtTime(summary.elapsedSec)}`
-      : `${summary.wordsFound} of ${summary.totalTargets} words found`;
+      ? t('resultsDone', { words: summary.wordsFound, bonus: summary.bonusFound, time: this.fmtTime(summary.elapsedSec) })
+      : t('resultsPartial', { found: summary.wordsFound, total: summary.totalTargets });
 
     // Stars (journey)
     const stars = extras?.stars ?? 0;
@@ -936,7 +973,7 @@ export class UI {
     tbody.innerHTML = '';
     summary.breakdown.forEach((row) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<th scope="row">${row.label}</th><td class="${row.value < 0 ? 'negative' : ''}">${row.value > 0 ? '+' : ''}${row.value}</td>`;
+      tr.innerHTML = `<th scope="row">${escapeHtml(t('row_' + row.key))}</th><td class="${row.value < 0 ? 'negative' : ''}">${row.value > 0 ? '+' : ''}${row.value}</td>`;
       tbody.appendChild(tr);
     });
     $('results-total').textContent = summary.score;
@@ -949,8 +986,9 @@ export class UI {
       if (!def) return;
       const chip = document.createElement('span');
       chip.className = 'achievement-chip';
-      chip.textContent = `🏆 ${def.name}`;
-      chip.title = def.desc;
+      const [name, desc] = tn('achievements', key, [def.name, def.desc]);
+      chip.textContent = `🏆 ${name}`;
+      chip.title = desc;
       ach.appendChild(chip);
     });
 
@@ -961,30 +999,31 @@ export class UI {
 
     // Next action
     const next = $('btn-results-next');
-    if (extras?.nextLabel) { next.hidden = false; next.textContent = extras.nextLabel; }
+    if (extras?.nextLabel) { next.hidden = false; next.textContent = t(extras.nextLabel, extras.nextVars); }
     else next.hidden = true;
 
-    this.announce(`${$('results-headline').textContent}. Score ${summary.score}.`, true);
+    if (!rerender) this.announce(t('resultsAnnounce', { headline: $('results-headline').textContent, score: summary.score }), true);
+    else { const lb = $('results-lb'); if (lb && !lb.hidden && this.app.lbState) lb.textContent = this.app.pt(this.app.lbState.key, this.app.lbState.vars); }
   }
 
   renderBoard(el, board) {
     const h = document.createElement('h3');
-    h.textContent = board.title;
+    h.textContent = t(board.titleKey || 'boardLocal');
     el.appendChild(h);
     if (!board.entries.length) {
       const p = document.createElement('p');
       p.className = 'casual-note';
-      p.textContent = 'No entries yet — yours is the first.';
+      p.textContent = t('noEntries');
       el.appendChild(p);
       return;
     }
     const table = document.createElement('table');
-    table.innerHTML = '<thead><tr><th>#</th><th>Gardener</th><th>Time</th><th>Score</th></tr></thead>';
+    table.innerHTML = `<thead><tr><th>#</th><th>${escapeHtml(t('colGardener'))}</th><th>${escapeHtml(t('colTime'))}</th><th>${escapeHtml(t('colScore'))}</th></tr></thead>`;
     const tbody = document.createElement('tbody');
     board.entries.slice(0, 10).forEach((e, i) => {
       const tr = document.createElement('tr');
       if (e.me) tr.className = 'me';
-      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${e.elapsedSec != null ? this.fmtTime(e.elapsedSec) : '—'}</td><td>${e.score}</td>`;
+      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(playerName(e.name))}</td><td>${e.elapsedSec != null ? this.fmtTime(e.elapsedSec) : '—'}</td><td>${e.score}</td>`;
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -992,7 +1031,7 @@ export class UI {
     if (board.casual) {
       const p = document.createElement('p');
       p.className = 'casual-note';
-      p.textContent = 'Casual board — server validation unavailable offline.';
+      p.textContent = t('casualNote');
       el.appendChild(p);
     }
   }
@@ -1028,13 +1067,15 @@ export class UI {
     const k = (a) => (b[a] || []).map(label).join('/');
     const help = $('help-keys');
     if (help) {
-      help.textContent = `Keyboard: type letters to spell · ${k('submit')} submit · ${k('delete_letter')} remove · ` +
-        `${k('shuffle')} shuffle · ${k('hint')} hint · ${k('undo')} undo · ${k('pause')}/${k('cancel')} pause · arrows + Space to pick letters with focus.`;
+      help.textContent = t('keysHelp', {
+        submit: k('submit'), remove: k('delete_letter'), shuffle: k('shuffle'), hint: k('hint'), undo: k('undo'), pause: k('pause'), cancel: k('cancel'),
+      });
     }
-    for (const [id, action, what] of [['btn-shuffle', 'shuffle', 'Shuffle'], ['btn-hint', 'hint', 'Hint'], ['btn-undo', 'undo', 'Undo'], ['btn-clear', 'cancel', 'Clear word'], ['btn-submit', 'submit', 'Submit word']]) {
+    for (const [id, action, what] of [['btn-shuffle', 'shuffle', 'whatShuffle'], ['btn-hint', 'hint', 'whatHint'], ['btn-undo', 'undo', 'whatUndo'], ['btn-clear', 'cancel', 'whatClear'], ['btn-submit', 'submit', 'whatSubmit']]) {
       const btn = $(id);
       if (!btn) continue;
-      btn.title = `${what} (${k(action)})`;
+      btn.title = t('keyTitle', { what: t(what), keys: k(action) });
+      btn.setAttribute('aria-label', t(what));
       const hint = btn.querySelector('.kbd');
       if (hint && action !== 'submit') hint.textContent = (b[action] || []).map(label)[0] || '';
     }

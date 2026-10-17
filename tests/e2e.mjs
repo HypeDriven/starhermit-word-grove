@@ -32,6 +32,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { launchToken, stubStarHermit } from './starhermit-e2e.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOT = (stage, vp) => `/tmp/word-grove-e2e-${stage}-${vp}.png`;
@@ -389,6 +390,114 @@ async function runMobile(browser) {
   console.log('ok - mobile: no page errors');
 }
 
+// ---------- language + report pass (signed in, stubbed StarHermit API) ----------
+// Automatic follows the account's preferred language (fr-CA); choosing Italian
+// in Settings relabels it in place and PUTs ui.language; Report a problem posts
+// to /reports; a German practice round shows German HUD text at this viewport
+// without overlaps; Automatic from the pause menu re-renders mid-round.
+async function runLanguage(browser, name, ctxOpts) {
+  const errors = [];
+  const context = await browser.newContext(ctxOpts);
+  const page = await context.newPage();
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if ((m.type() !== 'error' && m.type() !== 'warning') || browserNoise.test(m.text())) return;
+    errors.push(`console: ${m.text()}`);
+  });
+  const touch = !!ctxOpts.hasTouch;
+  const tap = async (sel) => (touch ? page.tap(sel) : page.click(sel));
+  try {
+    await context.addInitScript(() => {
+      try {
+        if (!localStorage.getItem('wordgrove:progress:v1')) {
+          localStorage.setItem('wordgrove:progress:v1', JSON.stringify({ version: 1, tutorialDone: true, journey: {}, flowers: 0, totals: { words: 0, bonus: 0, invalid: 0, sessions: 0, playSec: 0 }, mechanicsUsed: {}, achievements: {}, dailyDays: [], challengeBest: {}, selectedTheme: 'dawn', updatedAt: 1 }));
+        }
+      } catch (e) { /* private mode */ }
+    });
+    const calls = await stubStarHermit(page, { preferredLanguage: 'fr-CA' });
+    await page.goto('about:blank');
+    await page.goto(BASE + '/index.html#game_token=' + launchToken(), { waitUntil: 'load' });
+    await page.waitForSelector('#screen-title', { state: 'visible', timeout: 15000 });
+    if (await page.locator('#compat-warning:visible').count()) await tap('#btn-compat-ok');
+    await page.waitForFunction(() => document.documentElement.lang === 'fr-CA', null, { timeout: 15000 });
+    if ((await page.textContent('#btn-settings')).trim() !== 'Paramètres') throw new Error('title not in French');
+    ok(`${name}: Automatic follows the account language (fr-CA)`);
+
+    await tap('#btn-settings');
+    await page.waitForSelector('#overlay-settings', { state: 'visible' });
+    const choice = page.locator('#overlay-settings [data-game-language="choice"]');
+    await choice.scrollIntoViewIfNeeded();
+    const auto = (await choice.locator('option').first().textContent()).trim();
+    if (auto !== 'Automatique — Français (Canada)') throw new Error(`Automatic label not resolved: "${auto}"`);
+    if ((await page.locator('[data-game-language="choice"]').count()) !== 1) throw new Error('expected exactly one language selector');
+    await choice.selectOption('it-IT');
+    await page.waitForFunction(() => document.documentElement.lang === 'it-IT');
+    await page.waitForFunction(() => /Salvato/.test(document.querySelector('[data-game-language="status"]').textContent));
+    if (calls.settings['ui.language']?.choice !== 'it-IT') throw new Error('ui.language not saved: ' + JSON.stringify(calls.settings));
+    const rel = await page.evaluate(() => ({
+      h: document.getElementById('settings-title').textContent, gfx: document.getElementById('gfx-legend').textContent,
+      rm: document.querySelector('[data-i18n="reducedMotion"]').textContent, q: document.querySelector('#gfx-controls label span').textContent,
+    }));
+    if (rel.h !== 'Impostazioni' || rel.gfx !== 'Grafica' || rel.rm !== 'Movimento ridotto' || rel.q !== 'Qualità') throw new Error('Settings not re-rendered: ' + JSON.stringify(rel));
+    ok(`${name}: Italian chosen in Settings — relabelled in place, ui.language saved`);
+    await page.locator('[data-game-report="title"]').scrollIntoViewIfNeeded();
+    await page.fill('[data-game-report="title"]', 'Test report');
+    await tap('[data-game-report="send"]');
+    await page.waitForFunction(() => /Grazie/.test(document.querySelector('[data-game-report="status"]').textContent));
+    if (!calls.reports?.[0] || calls.reports[0].kind !== 'bug') throw new Error('report not posted');
+    await page.screenshot({ path: SHOT('language', name) });
+    ok(`${name}: Report a problem posted to /reports`);
+
+    // German practice round.
+    await choice.selectOption('de-DE');
+    await page.waitForFunction(() => document.documentElement.lang === 'de-DE');
+    await page.locator('#btn-settings-close').scrollIntoViewIfNeeded();
+    await tap('#btn-settings-close');
+    await page.waitForSelector('#overlay-settings', { state: 'hidden' });
+    await page.screenshot({ path: SHOT('german-title', name) });
+    await startPractice(page, { touch });
+    await page.waitForFunction(() => /Wörter$/.test(document.getElementById('hud-progress').textContent));
+    const st = await readState(page);
+    const word = st.targets[0];
+    await spell(page, word);
+    await waitFound(page, word, true);
+    const layout = await page.evaluate(() => {
+      const vis = (e) => e && e.offsetParent !== null && !e.hidden;
+      const r = (e) => e.getBoundingClientRect();
+      const overlap = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      const els = ['#hud .hud-left', '#hud .hud-right', '#wheel-controls', '#word-tray', '#bonus-line'].map((q) => document.querySelector(q)).filter(vis);
+      const cut = [...document.querySelectorAll('#hud *, #wheel-controls .btn, #word-feedback')].filter(vis).some((e) => r(e).right > innerWidth + 1 || r(e).left < -1);
+      const hudClash = overlap(r(document.querySelector('#hud .hud-left')), r(document.querySelector('#hud .hud-right')));
+      return { cut, hudClash, scrollX: document.documentElement.scrollWidth > innerWidth, n: els.length };
+    });
+    if (layout.cut || layout.hudClash || layout.scrollX) throw new Error('German HUD layout problem: ' + JSON.stringify(layout));
+    await page.screenshot({ path: SHOT('german-play', name) });
+    const progBefore = await page.textContent('#hud-progress');
+    ok(`${name}: German round shows German HUD (${progBefore}), nothing overlaps`);
+
+    // Back to Automatic mid-round from the pause menu.
+    await tap('#btn-pause');
+    await page.waitForSelector('#overlay-pause', { state: 'visible' });
+    if ((await page.textContent('#pause-title')).trim() !== 'Pausiert') throw new Error('pause not German');
+    await tap('#btn-pause-settings');
+    await page.waitForSelector('#overlay-settings', { state: 'visible' });
+    await choice.scrollIntoViewIfNeeded();
+    await choice.selectOption('auto');
+    await page.waitForFunction(() => document.documentElement.lang === 'fr-CA');
+    await page.locator('#btn-settings-close').scrollIntoViewIfNeeded();
+    await tap('#btn-settings-close');
+    if ((await page.textContent('#pause-title')).trim() !== 'En pause') throw new Error('pause not re-rendered');
+    await tap('#btn-resume');
+    await page.waitForFunction(() => /mots$/.test(document.getElementById('hud-progress').textContent));
+    const progAfter = await page.textContent('#hud-progress');
+    if (progAfter.replace(/\D+/g, ' ') !== progBefore.replace(/\D+/g, ' ')) throw new Error(`round restarted: ${progBefore} → ${progAfter}`);
+    ok(`${name}: Automatic mid-round re-renders the HUD in French without restarting (${progAfter})`);
+  } finally {
+    await context.close();
+  }
+  if (errors.length) throw new Error(`${name} language pass had page errors:\n  ${errors.join('\n  ')}`);
+}
+
 // ---------- main ----------
 let browser = null;
 try {
@@ -399,6 +508,8 @@ try {
   console.log(`serving ${ROOT} at ${BASE}`);
   await runDesktop(browser);
   await runMobile(browser);
+  await runLanguage(browser, 'desktop', { viewport: { width: 1280, height: 800 } });
+  await runLanguage(browser, 'mobile', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   console.log('\nE2E PASS — word-grove, desktop + mobile, no page errors');
 } catch (e) {
   console.error('\nE2E FAIL:', e.message || e);

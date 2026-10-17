@@ -1,6 +1,6 @@
 // Word Grove — strings for the StarHermit buttons and toasts (sign-in,
-// invite, signed out). Like the Graphics strings, they follow the browser
-// language.
+// invite, signed out, leaderboard line), in the game language (main.js
+// passes i18n.js locale()).
 
 import { pickLocale } from './gfx-i18n.js';
 
