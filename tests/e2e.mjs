@@ -200,6 +200,8 @@ async function exerciseGraphics(page, vp, { touch = false } = {}) {
   await page.selectOption('#set-quality', 'high');
   await page.waitForFunction(() => document.getElementById('scene-canvas').dataset.gfxPreset === 'high');
   await page.waitForFunction(() => /2048² shadows/.test(document.getElementById('gfx-summary').textContent), null, { timeout: 5000 });
+  const sumText = await page.textContent('#gfx-summary');
+  if (!/ · Level 0 · /.test(sumText)) throw new Error(`summary lacks the hardware level: ${sumText}`);
   await page.selectOption('#gfx-bloom', 'off');
   await page.waitForFunction(() => !/bloom/.test(document.getElementById('gfx-summary').textContent), null, { timeout: 5000 });
   const scaleRow = await page.locator('#gfx-render-scale').boundingBox();

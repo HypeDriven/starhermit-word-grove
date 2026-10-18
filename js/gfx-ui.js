@@ -115,7 +115,7 @@ export class GraphicsPanel {
     let text;
     if (rd?.graphicsInfo) {
       const info = rd.graphicsInfo(tr);
-      text = `${info.gpu || this.t.unknownGpu} · ${info.summary}`;
+      text = [info.gpu || this.t.unknownGpu, Number.isFinite(info.level) ? this.t.level.replace('{n}', info.level) : null, info.summary].filter(Boolean).join(' · ');
       document.getElementById('gfx-post-note').hidden = !info.postFailed;
     } else {
       text = `${this.t.unknownGpu} · ${describe(r, null, tr)}`;

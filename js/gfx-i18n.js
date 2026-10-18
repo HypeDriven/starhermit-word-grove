@@ -6,7 +6,7 @@ const EN = {
   renderScale: 'Render scale', fromPreset: 'From preset ({tier})',
   adaptive: 'Adaptive resolution', showFps: 'Show frame rate',
   postFailed: 'Post-processing is unavailable on this device, so the grove renders without it.',
-  unknownGpu: 'unknown GPU',
+  unknownGpu: 'unknown GPU', level: 'Level {n}',
   cat: {
     shadows: 'Shadows', ao: 'Ambient occlusion', bloom: 'Bloom', grade: 'Color grade',
     antialias: 'Anti-aliasing', reflections: 'Reflections', particles: 'Particles',
@@ -25,7 +25,7 @@ const ES = {
   renderScale: 'Escala de renderizado', fromPreset: 'Según el ajuste ({tier})',
   adaptive: 'Resolución adaptativa', showFps: 'Mostrar fotogramas por segundo',
   postFailed: 'El posprocesado no está disponible en este dispositivo; la arboleda se muestra sin él.',
-  unknownGpu: 'GPU desconocida',
+  unknownGpu: 'GPU desconocida', level: 'Nivel {n}',
   cat: {
     shadows: 'Sombras', ao: 'Oclusión ambiental', bloom: 'Resplandor', grade: 'Corrección de color',
     antialias: 'Antialiasing', reflections: 'Reflejos', particles: 'Partículas',
@@ -44,7 +44,7 @@ const FR = {
   renderScale: 'Échelle de rendu', fromPreset: 'Selon le préréglage ({tier})',
   adaptive: 'Résolution adaptative', showFps: 'Afficher les images par seconde',
   postFailed: 'Le post-traitement n’est pas disponible sur cet appareil ; le bosquet s’affiche sans.',
-  unknownGpu: 'GPU inconnu',
+  unknownGpu: 'GPU inconnu', level: 'Niveau {n}',
   cat: {
     shadows: 'Ombres', ao: 'Occlusion ambiante', bloom: 'Halo lumineux', grade: 'Étalonnage des couleurs',
     antialias: 'Anticrénelage', reflections: 'Reflets', particles: 'Particules',
@@ -68,7 +68,7 @@ const STRINGS = {
     renderScale: 'Renderskalierung', fromPreset: 'Wie Voreinstellung ({tier})',
     adaptive: 'Adaptive Auflösung', showFps: 'Bildrate anzeigen',
     postFailed: 'Nachbearbeitung ist auf diesem Gerät nicht verfügbar, daher wird der Hain ohne sie dargestellt.',
-    unknownGpu: 'unbekannte GPU',
+    unknownGpu: 'unbekannte GPU', level: 'Stufe {n}',
     cat: {
       shadows: 'Schatten', ao: 'Umgebungsverdeckung', bloom: 'Leuchteffekt', grade: 'Farbkorrektur',
       antialias: 'Kantenglättung', reflections: 'Spiegelungen', particles: 'Partikel',
@@ -88,7 +88,7 @@ const STRINGS = {
     renderScale: 'Escala de renderização', fromPreset: 'Conforme predefinição ({tier})',
     adaptive: 'Resolução adaptativa', showFps: 'Mostrar taxa de quadros',
     postFailed: 'O pós-processamento não está disponível neste dispositivo; o bosque é exibido sem ele.',
-    unknownGpu: 'GPU desconhecida',
+    unknownGpu: 'GPU desconhecida', level: 'Nível {n}',
     cat: {
       shadows: 'Sombras', ao: 'Oclusão ambiente', bloom: 'Brilho', grade: 'Correção de cor',
       antialias: 'Antisserrilhamento', reflections: 'Reflexos', particles: 'Partículas',
@@ -106,7 +106,7 @@ const STRINGS = {
     renderScale: 'Scala di rendering', fromPreset: 'Da preimpostazione ({tier})',
     adaptive: 'Risoluzione adattiva', showFps: 'Mostra frequenza fotogrammi',
     postFailed: 'La post-elaborazione non è disponibile su questo dispositivo, quindi il boschetto viene mostrato senza.',
-    unknownGpu: 'GPU sconosciuta',
+    unknownGpu: 'GPU sconosciuta', level: 'Livello {n}',
     cat: {
       shadows: 'Ombre', ao: 'Occlusione ambientale', bloom: 'Bagliore', grade: 'Correzione colore',
       antialias: 'Antialiasing', reflections: 'Riflessi', particles: 'Particelle',
