@@ -1,0 +1,98 @@
+# Every screen the title links on a desktop window: Daily (started, paused by
+# Escape, Settings and How to play from the pause sheet and back, left),
+# Challenges (one started and left), Score chase (a typed seed played),
+# Practice setup (Expert started), Settings, Help, the theme button and the
+# gardener name sheet.
+# viewport 1280x800@1
+until 600 Word
+frames 30
+click Daily. One grove
+until 900 words
+frames 30
+save wg-daily
+key Escape 1
+until 120 Restart level
+frames 10
+save wg-pause
+click =Settings
+until 120 Gentle camera sway
+frames 10
+save wg-settings
+click =Done
+until 120 Restart level
+frames 10
+click =Help
+until 120 Fill the grid
+frames 10
+save wg-help
+click =Close
+until 120 Restart level
+frames 10
+click =Leave round
+until 300 Learn & play
+frames 10
+click Challenge. Move
+until 300 Thrifty Sprout
+frames 10
+save wg-challenges
+click =Play Swift Breeze
+until 900 0 / 5 words
+frames 30
+key Escape 1
+frames 5
+until 120 Leave round
+frames 5
+click =Leave round
+until 300 Learn & play
+frames 10
+click Score chase. Share
+until 300 Seed code
+frames 10
+click Paste a friend
+frames 5
+type oak
+frames 5
+click =Play seed
+until 900 0 / 8 words
+frames 20
+save wg-chase
+key Escape 1
+until 120 Leave round
+frames 5
+click =Leave round
+until 300 Learn & play
+frames 10
+click Practice. Unranked
+until 120 Nothing here affects
+frames 10
+click Expert — 7 letters, large grid
+frames 5
+click =Start
+until 900 0 / 9 words
+frames 20
+save wg-practice
+key Escape 1
+until 120 Leave round
+frames 5
+click =Leave round
+until 300 Learn & play
+frames 10
+click Theme: Dawn
+frames 10
+click Help
+until 120 Fair play
+frames 10
+click =Close
+frames 10
+click =Gardener
+until 120 Gardener name
+frames 10
+save wg-name
+click =Cancel
+frames 10
+click Settings
+until 120 Replay tutorial
+frames 10
+click =Done
+frames 10
+save wg-title-back

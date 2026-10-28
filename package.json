@@ -1,15 +1,22 @@
 {
   "name": "word-grove",
-  "version": "1.0.0",
-  "type": "module",
+  "version": "1.1.0",
   "private": true,
+  "description": "Word Grove — letter-wheel crossword on the StarHermit engine",
+  "type": "module",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
+    "test": "npm run test:unit && npm run test:native",
+    "test:unit": "node tests/run-tests.js && node --test tests/*.test.mjs",
+    "test:native": "node tests/native.mjs",
+    "test:browser": "node tools/browser-play.mjs .",
     "start": "node server.js 8080",
-    "test": "node tests/run-tests.js && node --test tests/gfx.test.mjs tests/platform.test.mjs tests/i18n.test.mjs",
-    "test:e2e": "node tests/e2e.mjs"
+    "plays": "node tools/gen-plays.mjs",
+    "levels": "node tools/gen-levels.mjs",
+    "package": "node tools/package-web.mjs",
+    "css": "node tools/css.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
     "playwright-core": "^1.62.1"
-  },
-  "license": "PolyForm-Noncommercial-1.0.0"
+  }
 }

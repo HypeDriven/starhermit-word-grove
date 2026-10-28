@@ -6,6 +6,7 @@
 import { makeRng, hashString } from './rng.js';
 import { layoutWords, subanagrams, letterCountsOf, canForm } from './layout.js';
 import { COMMON, TARGETS, VALID, COMMON_SET, TARGET_SET } from './dictionary.js';
+import { FIXED } from './levels.js';
 
 export const CONTENT_VERSION = 1;
 
@@ -202,11 +203,29 @@ export function groves() {
 
 const levelCache = new Map();
 
+// The fixed content (48 Journey stages, the challenges, the lesson grove) is
+// generated offline into js/levels.js (tools/gen-levels.mjs; tests check the
+// table against generateLevel): generation takes ~50–200 ms a level in the
+// engine's interpreter. Daily, Practice and Score chase groves are generated
+// when played (the engine client does that on a worker).
+function fixedOr(key, seed, params) {
+  const f = FIXED[key];
+  return f ? JSON.parse(JSON.stringify(f)) : generateLevel(seed, params);
+}
+/** The raw generated level of every fixed-content key (tools/gen-levels.mjs). */
+export function fixedSources() {
+  const out = [];
+  for (let i = 0; i < GROVES.length * LEVELS_PER_GROVE; i++) out.push(['journey-' + i, 'journey-' + i, journeyParams(i)]);
+  for (const c of CHALLENGES) out.push(['challenge:' + c.id, 'challenge:' + c.id, { wheelSize: c.wheelSize, targetCount: c.targetCount }]);
+  out.push(['tutorial', 'tutorial-grove', { wheelSize: 5, targetCount: 4 }]);
+  return out;
+}
+
 export function getJourneyLevel(index) {
   const key = 'journey:' + index;
   if (levelCache.has(key)) return levelCache.get(key);
   const p = journeyParams(index);
-  const level = generateLevel('journey-' + index, p);
+  const level = fixedOr('journey-' + index, 'journey-' + index, p);
   level.id = 'journey-' + index;
   level.journeyIndex = index;
   level.grove = p.grove;
@@ -294,7 +313,7 @@ export function getChallengeLevel(id) {
   if (!c) throw new Error('unknown-challenge:' + id);
   const key = 'challenge:' + id;
   if (levelCache.has(key)) return levelCache.get(key);
-  const level = generateLevel(key, { wheelSize: c.wheelSize, targetCount: c.targetCount });
+  const level = fixedOr(key, key, { wheelSize: c.wheelSize, targetCount: c.targetCount });
   level.id = key;
   level.mode = 'challenge';
   level.challenge = c;
@@ -320,7 +339,7 @@ export function getChallengeLevel(id) {
 export function getTutorialLevel() {
   const key = 'tutorial';
   if (levelCache.has(key)) return levelCache.get(key);
-  const level = generateLevel('tutorial-grove', { wheelSize: 5, targetCount: 4 });
+  const level = fixedOr('tutorial', 'tutorial-grove', { wheelSize: 5, targetCount: 4 });
   level.id = 'tutorial';
   level.mode = 'learn';
   level.theme = 'dawn';

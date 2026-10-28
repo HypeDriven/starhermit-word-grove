@@ -16,15 +16,15 @@ function rawSet(k, v) {
 
 function readDoc(key, defaults) {
   const raw = rawGet(key);
-  if (!raw) return structuredClone(defaults);
+  if (!raw) return JSON.parse(JSON.stringify(defaults));
   try {
     const doc = JSON.parse(raw);
-    if (doc.check !== checksum(doc.payload)) return structuredClone(defaults);
+    if (doc.check !== checksum(doc.payload)) return JSON.parse(JSON.stringify(defaults));
     const data = JSON.parse(doc.payload);
-    if (data.version > defaults.version) return structuredClone(defaults);
+    if (data.version > defaults.version) return JSON.parse(JSON.stringify(defaults));
     return migrateDoc(data, defaults);
   } catch {
-    return structuredClone(defaults);
+    return JSON.parse(JSON.stringify(defaults));
   }
 }
 
@@ -35,7 +35,7 @@ function writeDoc(key, data) {
 
 function migrateDoc(data, defaults) {
   // Fill newly introduced fields; older versions upgrade in place.
-  const merged = Object.assign(structuredClone(defaults), data);
+  const merged = Object.assign(JSON.parse(JSON.stringify(defaults)), data);
   merged.version = defaults.version;
   return merged;
 }
@@ -65,7 +65,7 @@ export const DEFAULT_SETTINGS = {
 const SETTINGS_KEY = 'wordgrove:settings:v1';
 export function loadSettings() {
   const s = readDoc(SETTINGS_KEY, DEFAULT_SETTINGS);
-  if (!s.graphics || typeof s.graphics !== 'object') s.graphics = structuredClone(DEFAULT_SETTINGS.graphics);
+  if (!s.graphics || typeof s.graphics !== 'object') s.graphics = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.graphics));
   // Older saves stored a single quality tier; carry it over as a preset.
   if ('quality' in s) {
     const mapped = { high: 'high', medium: 'balanced', low: 'low' }[s.quality];

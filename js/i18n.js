@@ -1,13 +1,8 @@
 /**
- * Word Grove localization runtime.
- *
- * The language comes from sh-language.js (window.StarHermitLanguage, loaded
- * as a classic script before the modules): explicit game choice (ui.language)
- * → StarHermit account preferredLanguage → navigator.languages → en-US.
- * `?lang=` forces a locale for the page load (QA links) and hides the shared
- * selector. A change re-applies the static markup (data-i18n,
- * data-i18n-aria, data-i18n-title, data-i18n-placeholder) and notifies onLanguage listeners so
- * dynamic text re-renders without restarting the round.
+ * Word Grove localization core (pure: node tests and the engine client load
+ * it unchanged). The engine client sets the language from the runtime's
+ * interface language (native/i18n.ts → setLocale); every string is drawn
+ * through t() each frame, so a change shows on the next frame.
  */
 
 import { STRINGS } from './strings.js';
@@ -42,43 +37,17 @@ export function onLanguage(fn) {
   return () => listeners.delete(fn);
 }
 
-/** Re-apply static markup text in the current locale. */
-export function applyDom(root = globalThis.document) {
-  if (!root?.querySelectorAll) return;
-  for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
-  for (const el of root.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
-  for (const el of root.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
-  for (const el of root.querySelectorAll('[data-i18n-placeholder]')) el.placeholder = t(el.dataset.i18nPlaceholder);
-  if (root.documentElement) root.documentElement.lang = lang;
-}
-
-function setLocale(next) {
-  lang = STRINGS[next] ? next : 'en-US';
+/** Switches the language (an unsupported tag falls back by language, then en-US); returns the tag in use. */
+export function setLocale(next) {
+  const tag = String(next || 'en-US');
+  const base = tag.split('-')[0];
+  lang = STRINGS[tag] ? tag : (SUPPORTED.find((l) => l.split('-')[0] === base) || 'en-US');
   dict = STRINGS[lang];
-  const doc = globalThis.document;
-  if (doc && doc.readyState !== 'loading') applyDom(doc);
-  else if (doc?.documentElement) doc.documentElement.lang = lang;
   for (const fn of listeners) {
-    try {
-      fn(lang);
-    } catch (e) {
-      console.error(e);
-    }
+    try { fn(lang); } catch (e) { console.error(e); }
   }
+  return lang;
 }
-
-const SL = globalThis.window?.StarHermitLanguage ?? null;
-let forced = null;
-try {
-  const q = new URLSearchParams(globalThis.location?.search ?? '').get('lang');
-  forced = q && SL ? SL.match(q, SUPPORTED) : null;
-} catch {
-  /* opaque origin */
-}
-export const language = SL
-  ? SL.create({ game: 'word-grove', supported: SUPPORTED, panel: !forced, apply: (l) => setLocale(forced || l) })
-  : null;
-if (!language) setLocale('en-US');
 
 // ---------------------------------------------------------------------------
 // Content display names (the authored English stays in content.js)

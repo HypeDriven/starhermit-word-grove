@@ -39,8 +39,8 @@ export class Session {
       stateHashes: [],
       terminal: null,
     };
-    this.bonusPool = subanagrams(level.letters.split(''), VALID, 3)
-      .filter((w) => !level.targets.includes(w));
+    // opts.bonusPool: computed off the game's thread (the engine client's worker)
+    this.bonusPool = opts.bonusPool || bonusPoolOf(level);
     this.assistsUsed = { hints: 0, shuffles: 0, undos: 0 };
   }
 
@@ -161,8 +161,8 @@ export class Session {
     };
   }
 
-  static restore(snap) {
-    const s = new Session(snap.level, { sessionId: snap.sessionId });
+  static restore(snap, opts = {}) {
+    const s = new Session(snap.level, { ...opts, sessionId: snap.sessionId });
     s.state = rules.deserialize(snap.stateJson);
     s.replay = snap.replay;
     s.assistsUsed = snap.assistsUsed || s.assistsUsed;
@@ -206,6 +206,11 @@ export function verifyReplay(level, replay) {
     status: state.status, invalidCount: state.invalidCount,
     elapsedSec: rules.elapsedSeconds(state),
   };
+}
+
+/** The valid non-target words a level's wheel can spell. */
+export function bonusPoolOf(level) {
+  return subanagrams(level.letters.split(''), VALID, 3).filter((w) => !level.targets.includes(w));
 }
 
 export function sessionSeedCode(seed) {

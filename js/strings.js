@@ -7,7 +7,7 @@
 // themselves use the English word lists in every locale.
 
 const enUS = {
-  screenResults: 'Results',
+  screenResults: 'Results', preparing: 'Growing the grove…', moreOptions: 'Sound, graphics, language and controls', save: 'Save',
   tagline: 'Plant words. Grow a garden.', mainMenu: 'Main menu', daily: 'Daily', journey: 'Journey', practice: 'Practice', practiceSub: 'Unranked · undo allowed',
   challenge: 'Challenge', challengeSub: 'Move & time trials', scoreChase: 'Score chase', chaseSub: 'Share a seed, compare', learn: 'Learn',
   themeLabel: 'Theme:', settings: 'Settings', help: 'Help', gardenerLabel: 'Gardener:', bloomsLabel: 'blooms', back: '← Back', challengesH: 'Challenges',
@@ -27,7 +27,7 @@ const enUS = {
   ruleBonus: 'Bonus words', ruleBonusText: 'Real words that aren’t on the grid still score — and grow wildflowers.',
   ruleShuffle: 'Shuffle & hints', ruleShuffleText: 'Shuffle only rearranges the wheel’s look. Hints reveal one grid letter for a small point cost.',
   ruleScoring: 'Scoring', ruleScoringText: 'Grid words score by length. Using every letter in one word earns a full-wheel bonus. Results always show the breakdown.',
-  ruleFair: 'Fair play', ruleFairText: 'Seeds are fixed and inspectable. Ranked boards reject changed settings — challenge yourself, not the ledger.',
+  ruleFair: 'Fair play', ruleFairText: 'Seeds are fixed, so the same seed always grows the same grove. Hints cost points, and the results show every part of your score.',
   close: 'Close', start: 'Start', cancel: 'Cancel', limitedGraphics: 'Limited graphics',
   compatText: 'WebGL isn’t available, so the 3D grove is resting. The game is fully playable — your progress is safe.', continue: 'Continue',
   dailySub: 'One grove per day', doneToday: 'Done today ✓', allGrovesDone: 'All groves complete ✓', groveStage: '{grove} · stage {n}',
@@ -47,7 +47,7 @@ const enUS = {
   headLeft: 'Round left early', headOver: 'Round over', resultsDone: '{words} words planted · {bonus} bonus · {time}', resultsPartial: '{found} of {total} words found',
   row_target: 'Words placed', row_bonus: 'Bonus words', row_pangram: 'Full-wheel words', row_completion: 'Completion', row_timeBonus: 'Speed bonus', row_moveBonus: 'Moves spared', row_hintPenalty: 'Hint cost',
   resultsAnnounce: '{headline}. Score {score}.', boardLocal: 'Local board', boardHigh: 'High-score board', boardChase: 'Score chase board', noEntries: 'No entries yet — yours is the first.',
-  colGardener: 'Gardener', colTime: 'Time', colScore: 'Score', casualNote: 'Casual board — server validation unavailable offline.',
+  colGardener: 'Gardener', colTime: 'Time', colScore: 'Score', casualNote: 'Local board — kept on this device and in your saved progress.',
   keysHelp: 'Keyboard: type letters to spell · {submit} submit · {remove} remove · {shuffle} shuffle · {hint} hint · {undo} undo · {pause}/{cancel} pause · arrows + Space to pick letters with focus.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Shuffle', whatHint: 'Hint', whatUndo: 'Undo', whatClear: 'Clear word', whatSubmit: 'Submit word',
   contentFailed: 'This content failed validation and is excluded from play.', startJourney: 'Start journey', dailyGrove: 'Daily grove', playAgain: 'Play again', tryAgain: 'Try again',
@@ -85,7 +85,7 @@ const enUS = {
 const enGB = { ...enUS, colorPalette: 'Colour palette' };
 
 const es419 = {
-  screenResults: 'Resultados',
+  screenResults: 'Resultados', preparing: 'Haciendo crecer la arboleda…', moreOptions: 'Sonido, gráficos, idioma y controles', save: 'Guardar',
   tagline: 'Planta palabras. Haz crecer un jardín.', mainMenu: 'Menú principal', daily: 'Diario', journey: 'Travesía', practice: 'Práctica', practiceSub: 'Sin clasificación · se puede deshacer',
   challenge: 'Desafío', challengeSub: 'Pruebas de jugadas y tiempo', scoreChase: 'Duelo de puntos', chaseSub: 'Comparte una semilla y compara', learn: 'Aprender',
   themeLabel: 'Tema:', settings: 'Configuración', help: 'Ayuda', gardenerLabel: 'Jardinero:', bloomsLabel: 'flores', back: '← Volver', challengesH: 'Desafíos',
@@ -105,7 +105,7 @@ const es419 = {
   ruleBonus: 'Palabras extra', ruleBonusText: 'Las palabras reales que no están en la cuadrícula también suman y hacen crecer flores silvestres.',
   ruleShuffle: 'Mezclar y pistas', ruleShuffleText: 'Mezclar solo cambia el aspecto de la rueda. Las pistas revelan una letra de la cuadrícula a cambio de unos pocos puntos.',
   ruleScoring: 'Puntuación', ruleScoringText: 'Las palabras de la cuadrícula puntúan según su longitud. Usar todas las letras en una palabra da un bono de rueda completa. Los resultados siempre muestran el desglose.',
-  ruleFair: 'Juego limpio', ruleFairText: 'Las semillas son fijas y se pueden revisar. Las tablas clasificadas rechazan ajustes alterados: desafíate a ti, no al registro.',
+  ruleFair: 'Juego limpio', ruleFairText: 'Las semillas son fijas: la misma semilla siempre hace crecer la misma arboleda. Las pistas cuestan puntos y los resultados muestran cada parte de tu puntuación.',
   close: 'Cerrar', start: 'Empezar', cancel: 'Cancelar', limitedGraphics: 'Gráficos limitados',
   compatText: 'WebGL no está disponible, así que la arboleda 3D descansa. El juego se puede jugar por completo y tu progreso está a salvo.', continue: 'Continuar',
   dailySub: 'Una arboleda por día', doneToday: 'Hecho hoy ✓', allGrovesDone: 'Todas las arboledas completadas ✓', groveStage: '{grove} · etapa {n}',
@@ -125,7 +125,7 @@ const es419 = {
   headLeft: 'Ronda abandonada', headOver: 'Ronda terminada', resultsDone: '{words} palabras plantadas · {bonus} extra · {time}', resultsPartial: '{found} de {total} palabras encontradas',
   row_target: 'Palabras colocadas', row_bonus: 'Palabras extra', row_pangram: 'Palabras de rueda completa', row_completion: 'Finalización', row_timeBonus: 'Bono de velocidad', row_moveBonus: 'Jugadas ahorradas', row_hintPenalty: 'Costo de pistas',
   resultsAnnounce: '{headline}. Puntuación {score}.', boardLocal: 'Tabla local', boardHigh: 'Tabla de récords', boardChase: 'Tabla del duelo de puntos', noEntries: 'Todavía no hay entradas: la tuya es la primera.',
-  colGardener: 'Jardinero', colTime: 'Tiempo', colScore: 'Puntos', casualNote: 'Tabla informal: la validación del servidor no está disponible sin conexión.',
+  colGardener: 'Jardinero', colTime: 'Tiempo', colScore: 'Puntos', casualNote: 'Tabla local: se guarda en este dispositivo y en tu progreso.',
   keysHelp: 'Teclado: escribe letras para formar palabras · {submit} enviar · {remove} quitar · {shuffle} mezclar · {hint} pista · {undo} deshacer · {pause}/{cancel} pausa · flechas + Espacio para elegir letras con el foco.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Mezclar', whatHint: 'Pista', whatUndo: 'Deshacer', whatClear: 'Borrar palabra', whatSubmit: 'Enviar palabra',
   contentFailed: 'Este contenido no pasó la validación y queda fuera del juego.', startJourney: 'Empezar la travesía', dailyGrove: 'Arboleda diaria', playAgain: 'Jugar de nuevo', tryAgain: 'Intentar de nuevo',
@@ -168,7 +168,7 @@ const esES = {
 };
 
 const deDE = {
-  screenResults: 'Ergebnisse',
+  screenResults: 'Ergebnisse', preparing: 'Der Hain wächst …', moreOptions: 'Ton, Grafik, Sprache und Steuerung', save: 'Speichern',
   tagline: 'Pflanze Wörter. Lass einen Garten wachsen.', mainMenu: 'Hauptmenü', daily: 'Täglich', journey: 'Reise', practice: 'Training', practiceSub: 'Ohne Wertung · Rückgängig erlaubt',
   challenge: 'Herausforderung', challengeSub: 'Zug- und Zeitprüfungen', scoreChase: 'Punktejagd', chaseSub: 'Seed teilen, vergleichen', learn: 'Lernen',
   themeLabel: 'Thema:', settings: 'Einstellungen', help: 'Hilfe', gardenerLabel: 'Gärtner:', bloomsLabel: 'Blüten', back: '← Zurück', challengesH: 'Herausforderungen',
@@ -188,7 +188,7 @@ const deDE = {
   ruleBonus: 'Bonuswörter', ruleBonusText: 'Echte Wörter, die nicht im Gitter stehen, zählen trotzdem – und lassen Wildblumen wachsen.',
   ruleShuffle: 'Mischen & Tipps', ruleShuffleText: 'Mischen ändert nur das Aussehen des Rads. Tipps decken gegen ein paar Punkte einen Buchstaben im Gitter auf.',
   ruleScoring: 'Punkte', ruleScoringText: 'Gitterwörter zählen nach Länge. Wer alle Buchstaben in einem Wort nutzt, bekommt einen Vollrad-Bonus. Die Ergebnisse zeigen immer die Aufschlüsselung.',
-  ruleFair: 'Fairness', ruleFairText: 'Seeds sind fest und einsehbar. Gewertete Listen lehnen veränderte Einstellungen ab – fordere dich selbst heraus, nicht die Liste.',
+  ruleFair: 'Fairness', ruleFairText: 'Seeds sind fest: derselbe Seed lässt immer denselben Hain wachsen. Hinweise kosten Punkte, und die Ergebnisse zeigen jeden Teil deiner Punktzahl.',
   close: 'Schließen', start: 'Start', cancel: 'Abbrechen', limitedGraphics: 'Eingeschränkte Grafik',
   compatText: 'WebGL ist nicht verfügbar, darum ruht der 3D-Hain. Das Spiel ist voll spielbar – dein Fortschritt ist sicher.', continue: 'Weiter',
   dailySub: 'Ein Hain pro Tag', doneToday: 'Heute geschafft ✓', allGrovesDone: 'Alle Haine geschafft ✓', groveStage: '{grove} · Stufe {n}',
@@ -208,7 +208,7 @@ const deDE = {
   headLeft: 'Runde vorzeitig verlassen', headOver: 'Runde vorbei', resultsDone: '{words} Wörter gepflanzt · {bonus} Bonus · {time}', resultsPartial: '{found} von {total} Wörtern gefunden',
   row_target: 'Gelegte Wörter', row_bonus: 'Bonuswörter', row_pangram: 'Vollrad-Wörter', row_completion: 'Abschluss', row_timeBonus: 'Tempobonus', row_moveBonus: 'Gesparte Versuche', row_hintPenalty: 'Tippkosten',
   resultsAnnounce: '{headline}. {score} Punkte.', boardLocal: 'Lokale Liste', boardHigh: 'Highscore-Liste', boardChase: 'Liste der Punktejagd', noEntries: 'Noch keine Einträge – deiner ist der erste.',
-  colGardener: 'Gärtner', colTime: 'Zeit', colScore: 'Punkte', casualNote: 'Lockere Liste – Serverprüfung offline nicht verfügbar.',
+  colGardener: 'Gärtner', colTime: 'Zeit', colScore: 'Punkte', casualNote: 'Lokale Liste – gespeichert auf diesem Gerät und in deinem Spielstand.',
   keysHelp: 'Tastatur: Buchstaben tippen zum Buchstabieren · {submit} abschicken · {remove} entfernen · {shuffle} mischen · {hint} Tipp · {undo} rückgängig · {pause}/{cancel} Pause · Pfeile + Leertaste wählen Buchstaben mit Fokus.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Mischen', whatHint: 'Tipp', whatUndo: 'Rückgängig', whatClear: 'Wort löschen', whatSubmit: 'Wort abschicken',
   contentFailed: 'Dieser Inhalt hat die Prüfung nicht bestanden und ist vom Spiel ausgeschlossen.', startJourney: 'Reise starten', dailyGrove: 'Tageshain', playAgain: 'Nochmal spielen', tryAgain: 'Erneut versuchen',
@@ -244,7 +244,7 @@ const deDE = {
 };
 
 const frFR = {
-  screenResults: 'Résultats',
+  screenResults: 'Résultats', preparing: 'Le bosquet pousse…', moreOptions: 'Son, graphismes, langue et commandes', save: 'Enregistrer',
   tagline: 'Plantez des mots. Faites pousser un jardin.', mainMenu: 'Menu principal', daily: 'Du jour', journey: 'Voyage', practice: 'Entraînement', practiceSub: 'Non classé · annulation permise',
   challenge: 'Défi', challengeSub: 'Épreuves de coups et de temps', scoreChase: 'Course aux points', chaseSub: 'Partagez une graine, comparez', learn: 'Apprendre',
   themeLabel: 'Thème :', settings: 'Paramètres', help: 'Aide', gardenerLabel: 'Jardinier :', bloomsLabel: 'fleurs', back: '← Retour', challengesH: 'Défis',
@@ -264,7 +264,7 @@ const frFR = {
   ruleBonus: 'Mots bonus', ruleBonusText: 'Les vrais mots absents de la grille rapportent aussi des points — et font pousser des fleurs sauvages.',
   ruleShuffle: 'Mélange et indices', ruleShuffleText: 'Le mélange ne change que l’apparence de la roue. Un indice révèle une lettre de la grille contre quelques points.',
   ruleScoring: 'Score', ruleScoringText: 'Les mots de la grille rapportent selon leur longueur. Utiliser toutes les lettres dans un mot donne un bonus roue complète. Les résultats détaillent toujours le score.',
-  ruleFair: 'Fair-play', ruleFairText: 'Les graines sont fixes et consultables. Les classements refusent les réglages modifiés — défiez-vous vous-même, pas le registre.',
+  ruleFair: 'Fair-play', ruleFairText: 'Les graines sont fixes : la même graine fait toujours pousser le même bosquet. Les indices coûtent des points et les résultats détaillent tout votre score.',
   close: 'Fermer', start: 'Commencer', cancel: 'Annuler', limitedGraphics: 'Graphismes limités',
   compatText: 'WebGL n’est pas disponible, le bosquet 3D se repose donc. Le jeu reste entièrement jouable — votre progression est en sécurité.', continue: 'Continuer',
   dailySub: 'Un bosquet par jour', doneToday: 'Fait aujourd’hui ✓', allGrovesDone: 'Tous les bosquets terminés ✓', groveStage: '{grove} · étape {n}',
@@ -284,7 +284,7 @@ const frFR = {
   headLeft: 'Manche quittée', headOver: 'Manche terminée', resultsDone: '{words} mots plantés · {bonus} bonus · {time}', resultsPartial: '{found} mots trouvés sur {total}',
   row_target: 'Mots placés', row_bonus: 'Mots bonus', row_pangram: 'Mots roue complète', row_completion: 'Achèvement', row_timeBonus: 'Bonus de vitesse', row_moveBonus: 'Coups économisés', row_hintPenalty: 'Coût des indices',
   resultsAnnounce: '{headline}. Score {score}.', boardLocal: 'Classement local', boardHigh: 'Classement des records', boardChase: 'Classement de la course aux points', noEntries: 'Aucune entrée — la vôtre sera la première.',
-  colGardener: 'Jardinier', colTime: 'Temps', colScore: 'Score', casualNote: 'Classement libre — validation du serveur indisponible hors ligne.',
+  colGardener: 'Jardinier', colTime: 'Temps', colScore: 'Score', casualNote: 'Classement local — conservé sur cet appareil et dans votre progression.',
   keysHelp: 'Clavier : tapez des lettres pour épeler · {submit} valider · {remove} retirer · {shuffle} mélanger · {hint} indice · {undo} annuler · {pause}/{cancel} pause · flèches + Espace pour choisir les lettres avec le focus.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Mélanger', whatHint: 'Indice', whatUndo: 'Annuler', whatClear: 'Effacer le mot', whatSubmit: 'Valider le mot',
   contentFailed: 'Ce contenu a échoué à la validation et est exclu du jeu.', startJourney: 'Commencer le voyage', dailyGrove: 'Bosquet du jour', playAgain: 'Rejouer', tryAgain: 'Réessayer',
@@ -327,7 +327,7 @@ const frCA = {
 };
 
 const ptBR = {
-  screenResults: 'Resultados',
+  screenResults: 'Resultados', preparing: 'Cultivando o bosque…', moreOptions: 'Som, gráficos, idioma e controles', save: 'Salvar',
   tagline: 'Plante palavras. Cultive um jardim.', mainMenu: 'Menu principal', daily: 'Diário', journey: 'Jornada', practice: 'Treino', practiceSub: 'Sem ranking · pode desfazer',
   challenge: 'Desafio', challengeSub: 'Provas de jogadas e tempo', scoreChase: 'Caça aos pontos', chaseSub: 'Compartilhe uma semente e compare', learn: 'Aprender',
   themeLabel: 'Tema:', settings: 'Configurações', help: 'Ajuda', gardenerLabel: 'Jardineiro:', bloomsLabel: 'flores', back: '← Voltar', challengesH: 'Desafios',
@@ -347,7 +347,7 @@ const ptBR = {
   ruleBonus: 'Palavras bônus', ruleBonusText: 'Palavras reais que não estão na grade também pontuam — e fazem flores silvestres crescerem.',
   ruleShuffle: 'Embaralhar e dicas', ruleShuffleText: 'Embaralhar só muda a aparência da roda. Dicas revelam uma letra da grade por alguns pontos.',
   ruleScoring: 'Pontuação', ruleScoringText: 'Palavras da grade pontuam pelo tamanho. Usar todas as letras numa palavra rende bônus de roda completa. Os resultados sempre mostram o detalhamento.',
-  ruleFair: 'Jogo limpo', ruleFairText: 'As sementes são fixas e verificáveis. Placares ranqueados recusam configurações alteradas — desafie a si mesmo, não o registro.',
+  ruleFair: 'Jogo limpo', ruleFairText: 'As sementes são fixas: a mesma semente sempre faz crescer o mesmo bosque. Dicas custam pontos e os resultados mostram cada parte da sua pontuação.',
   close: 'Fechar', start: 'Começar', cancel: 'Cancelar', limitedGraphics: 'Gráficos limitados',
   compatText: 'O WebGL não está disponível, então o bosque 3D está descansando. O jogo é totalmente jogável — seu progresso está seguro.', continue: 'Continuar',
   dailySub: 'Um bosque por dia', doneToday: 'Feito hoje ✓', allGrovesDone: 'Todos os bosques concluídos ✓', groveStage: '{grove} · fase {n}',
@@ -367,7 +367,7 @@ const ptBR = {
   headLeft: 'Rodada abandonada', headOver: 'Rodada encerrada', resultsDone: '{words} palavras plantadas · {bonus} bônus · {time}', resultsPartial: '{found} de {total} palavras encontradas',
   row_target: 'Palavras colocadas', row_bonus: 'Palavras bônus', row_pangram: 'Palavras de roda completa', row_completion: 'Conclusão', row_timeBonus: 'Bônus de velocidade', row_moveBonus: 'Jogadas poupadas', row_hintPenalty: 'Custo das dicas',
   resultsAnnounce: '{headline}. Pontuação {score}.', boardLocal: 'Placar local', boardHigh: 'Placar de recordes', boardChase: 'Placar da caça aos pontos', noEntries: 'Ainda não há entradas — a sua é a primeira.',
-  colGardener: 'Jardineiro', colTime: 'Tempo', colScore: 'Pontos', casualNote: 'Placar casual — validação do servidor indisponível offline.',
+  colGardener: 'Jardineiro', colTime: 'Tempo', colScore: 'Pontos', casualNote: 'Placar local — guardado neste aparelho e no seu progresso.',
   keysHelp: 'Teclado: digite letras para soletrar · {submit} enviar · {remove} remover · {shuffle} embaralhar · {hint} dica · {undo} desfazer · {pause}/{cancel} pausar · setas + Espaço escolhem letras com foco.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Embaralhar', whatHint: 'Dica', whatUndo: 'Desfazer', whatClear: 'Apagar palavra', whatSubmit: 'Enviar palavra',
   contentFailed: 'Este conteúdo falhou na validação e foi excluído do jogo.', startJourney: 'Começar jornada', dailyGrove: 'Bosque diário', playAgain: 'Jogar de novo', tryAgain: 'Tentar de novo',
@@ -403,7 +403,7 @@ const ptBR = {
 };
 
 const itIT = {
-  screenResults: 'Risultati',
+  screenResults: 'Risultati', preparing: 'Il boschetto cresce…', moreOptions: 'Audio, grafica, lingua e comandi', save: 'Salva',
   tagline: 'Pianta parole. Fai crescere un giardino.', mainMenu: 'Menu principale', daily: 'Giornaliera', journey: 'Viaggio', practice: 'Allenamento', practiceSub: 'Senza classifica · annulla consentito',
   challenge: 'Sfida', challengeSub: 'Prove di mosse e tempo', scoreChase: 'Caccia ai punti', chaseSub: 'Condividi un seed e confronta', learn: 'Impara',
   themeLabel: 'Tema:', settings: 'Impostazioni', help: 'Aiuto', gardenerLabel: 'Giardiniere:', bloomsLabel: 'fiori', back: '← Indietro', challengesH: 'Sfide',
@@ -423,7 +423,7 @@ const itIT = {
   ruleBonus: 'Parole bonus', ruleBonusText: 'Le parole vere che non sono nella griglia fanno comunque punti — e crescere fiori selvatici.',
   ruleShuffle: 'Mescola e suggerimenti', ruleShuffleText: 'Mescolare cambia solo l’aspetto della ruota. I suggerimenti rivelano una lettera della griglia in cambio di qualche punto.',
   ruleScoring: 'Punteggio', ruleScoringText: 'Le parole della griglia valgono in base alla lunghezza. Usare tutte le lettere in una parola dà un bonus ruota completa. I risultati mostrano sempre il dettaglio.',
-  ruleFair: 'Gioco leale', ruleFairText: 'I seed sono fissi e consultabili. Le classifiche rifiutano impostazioni modificate: sfida te stesso, non il registro.',
+  ruleFair: 'Gioco leale', ruleFairText: 'I seed sono fissi: lo stesso seed fa sempre crescere lo stesso boschetto. Gli indizi costano punti e i risultati mostrano ogni parte del punteggio.',
   close: 'Chiudi', start: 'Inizia', cancel: 'Annulla', limitedGraphics: 'Grafica limitata',
   compatText: 'WebGL non è disponibile, quindi il boschetto 3D riposa. Il gioco è pienamente giocabile: i tuoi progressi sono al sicuro.', continue: 'Continua',
   dailySub: 'Un boschetto al giorno', doneToday: 'Fatto oggi ✓', allGrovesDone: 'Tutti i boschetti completati ✓', groveStage: '{grove} · livello {n}',
@@ -443,7 +443,7 @@ const itIT = {
   headLeft: 'Partita abbandonata', headOver: 'Partita finita', resultsDone: '{words} parole piantate · {bonus} bonus · {time}', resultsPartial: '{found} parole trovate su {total}',
   row_target: 'Parole inserite', row_bonus: 'Parole bonus', row_pangram: 'Parole a ruota completa', row_completion: 'Completamento', row_timeBonus: 'Bonus velocità', row_moveBonus: 'Mosse risparmiate', row_hintPenalty: 'Costo dei suggerimenti',
   resultsAnnounce: '{headline}. Punteggio {score}.', boardLocal: 'Classifica locale', boardHigh: 'Classifica dei record', boardChase: 'Classifica della caccia ai punti', noEntries: 'Ancora nessuna voce: la tua è la prima.',
-  colGardener: 'Giardiniere', colTime: 'Tempo', colScore: 'Punti', casualNote: 'Classifica libera: convalida del server non disponibile offline.',
+  colGardener: 'Giardiniere', colTime: 'Tempo', colScore: 'Punti', casualNote: 'Classifica locale: conservata su questo dispositivo e nei tuoi progressi.',
   keysHelp: 'Tastiera: digita lettere per comporre · {submit} invia · {remove} togli · {shuffle} mescola · {hint} suggerimento · {undo} annulla · {pause}/{cancel} pausa · frecce + Spazio per scegliere lettere con il focus.',
   keyTitle: '{what} ({keys})', whatShuffle: 'Mescola', whatHint: 'Suggerimento', whatUndo: 'Annulla', whatClear: 'Cancella parola', whatSubmit: 'Invia parola',
   contentFailed: 'Questo contenuto non ha superato la convalida ed è escluso dal gioco.', startJourney: 'Inizia il viaggio', dailyGrove: 'Boschetto del giorno', playAgain: 'Gioca ancora', tryAgain: 'Riprova',

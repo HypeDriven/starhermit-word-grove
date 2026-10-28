@@ -128,7 +128,7 @@ export function makeCommandId(sessionId, tick) {
 
 // Returns { state, ok, reason?, events: [] }. Input state is not mutated.
 export function dispatch(prevState, cmd) {
-  const state = structuredClone(prevState);
+  const state = JSON.parse(JSON.stringify(prevState));
   state.lastError = null;
   const events = [];
   const fail = (reason) => {
@@ -258,7 +258,7 @@ export function dispatch(prevState, cmd) {
       if (!state.constraints.allowUndo) return fail('undo-disabled');
       if (!state.undoStack.length) return fail('nothing-to-undo');
       const snap = JSON.parse(state.undoStack.pop());
-      const restored = Object.assign(structuredClone(state), snap);
+      const restored = Object.assign(JSON.parse(JSON.stringify(state)), snap);
       restored.log = state.log;
       // Retain the remaining history so multi-level undo keeps working (each
       // snapshot blanks its own stack to avoid recursive growth) — the popped
@@ -303,7 +303,7 @@ export function dispatch(prevState, cmd) {
 }
 
 function snapshotForUndo(state) {
-  const s = structuredClone(state);
+  const s = JSON.parse(JSON.stringify(state));
   s.undoStack = [];
   s.log = [];
   return s;

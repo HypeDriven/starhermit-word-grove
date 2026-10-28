@@ -1,0 +1,30 @@
+# A phone held sideways (844x390 at DPR 3): the title, Practice Easy started
+# by touch, the HUD rail | grid column | wheel layout, letters tapped on the
+# wheel, Clear, the pause sheet by touch, left.
+# viewport 844x390@3
+until 600 Word
+frames 30
+save wg-land-title
+touch Practice. Unranked
+until 120 Nothing here affects
+frames 10
+touch Easy — 5 letters, small grid
+frames 5
+touch =Start
+until 900 0 / 4 words
+frames 40
+save wg-land-game
+touch Letter
+frames 6
+touch Letter #2
+frames 6
+save wg-land-spell
+touch Clear word
+frames 6
+touch =Pause
+until 120 Leave round
+frames 10
+save wg-land-pause
+touch =Leave round
+until 300 Learn & play
+frames 10

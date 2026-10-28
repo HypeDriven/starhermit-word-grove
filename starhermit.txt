@@ -1,13 +1,50 @@
 name=Word Grove
 description=Connect letters around a wheel to discover words and fill a compact crossword grid.
-launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
 server=score-script.js
 cover=cover.jpg
+
+# StarHermit engine script game: one package, played natively by the
+# StarHermit client and in browsers by the engine's web runtime. Browsers open
+# launch=index.html, the loader `npm run package` writes (it pins the engine
+# on wiki.starhermit.com by hash; never edit it). Re-run `npm run package`
+# after every change and commit index.html + starhermit-files.json.
+launch=index.html
+engine.api=1
+engine.entry=native/main.ts
+engine.version=1.22.0
+engine.minor=24
+engine.capabilities=platform,storage,clipboard
+
+# Keyboard actions (players rebind keys and pads in the runtime's Options);
+# the names are the browser build's, so bindings saved with the account carry
+# over. Letters A–Z typed during a round pick the first free tile showing
+# that letter and are not bindable; a Shuffle, Hint, Undo or Pause key on a
+# letter acts while no word is being spelled and types its letter otherwise.
+# The wheel is also played by dragging across the letters with the pointer
+# or a finger, or tapping them one by one; every button takes the pointer,
+# touch, or Tab and Enter.
+engine.group.submit=Word
 control.submit=Enter+NumpadEnter | Submit word
-control.cancel=Escape | Clear word / pause / close
 control.delete_letter=Backspace | Remove last letter
+control.cancel=Escape | Clear word / pause / close
+control.next_letter=ArrowRight+ArrowDown | Next letter on the wheel
+control.prev_letter=ArrowLeft+ArrowUp | Previous letter on the wheel
+control.pick=Space | Pick the wheel's highlighted letter
+engine.group.shuffle=Round
 control.shuffle=KeyS | Shuffle
 control.hint=KeyH | Hint
 control.undo=KeyU | Undo (practice)
 control.pause=KeyP | Pause
+
+# Gamepad defaults (the browser build's): the D-pad or left stick moves
+# around the wheel, South picks the letter, East removes the last one, West
+# shuffles, North asks for a hint, the right shoulder submits, Start pauses.
+engine.gamepad.next_letter=DpadRight+DpadDown+LeftStickRight+LeftStickDown
+engine.gamepad.prev_letter=DpadLeft+DpadUp+LeftStickLeft+LeftStickUp
+engine.gamepad.pick=South
+engine.gamepad.delete_letter=East
+engine.gamepad.shuffle=West
+engine.gamepad.hint=North
+engine.gamepad.submit=RightShoulder
+engine.gamepad.pause=Start

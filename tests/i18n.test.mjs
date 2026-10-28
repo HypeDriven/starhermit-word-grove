@@ -1,4 +1,4 @@
-// Every string key used in markup (data-i18n*) and code (t('…')) exists in all
+// Every string key the engine client draws (T("…") in native/*.ts) exists in all
 // nine locales with the same {placeholders} as US English, every locale has
 // exactly the US English keys, and every content name (groves, themes,
 // difficulties, challenges, tutorial steps, achievements) is translated.
@@ -9,17 +9,14 @@ import { STRINGS } from '../js/strings.js';
 import { THEMES, groves, CHALLENGES, PRACTICE_DIFFICULTIES, TUTORIAL_STEPS, ACHIEVEMENTS } from '../js/content.js';
 
 const LOCALES = ['en-US', 'en-GB', 'es-419', 'es-ES', 'de-DE', 'fr-FR', 'fr-CA', 'pt-BR', 'it-IT'];
-const dir = new URL('../js/', import.meta.url);
-// render.js / gfx.js call t() with the Graphics translator, not strings.js.
-const code = readdirSync(dir).filter((f) => f.endsWith('.js') && !['strings.js', 'render.js', 'gfx.js'].includes(f))
+const dir = new URL('../native/', import.meta.url);
+const code = readdirSync(dir).filter((f) => f.endsWith('.ts'))
   .map((f) => readFileSync(new URL(f, dir), 'utf8')).join('\n');
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const en = STRINGS['en-US'];
 const used = new Set();
-for (const m of code.matchAll(/\bt\('([A-Za-z0-9_]+)'(?!\s*\+)/g)) used.add(m[1]);
-for (const m of html.matchAll(/data-i18n(?:-aria|-title|-placeholder)?="([A-Za-z0-9_]+)"/g)) used.add(m[1]);
+for (const m of code.matchAll(/\bT\("([A-Za-z0-9_]+)"(?!\s*\+)/g)) used.add(m[1]);
 // Keys reached through tables and prefixes.
-for (const m of code.matchAll(/'((?:inv|cap|head|what|sync|board)[A-Z_]\w*)'/g)) used.add(m[1]);
+for (const m of code.matchAll(/"((?:inv|cap|head|what|sync|board)[A-Z_]\w*)"/g)) used.add(m[1]);
 for (const k of ['target', 'bonus', 'pangram', 'completion', 'timeBonus', 'moveBonus', 'hintPenalty']) used.add('row_' + k);
 for (const k of ['startJourney', 'stageN', 'dailyGrove', 'playAgain', 'tryAgain', 'screenResults', 'play', 'challengesH', 'scoreChase', 'journey']) used.add(k);
 const vars = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
@@ -28,7 +25,7 @@ test('ships the nine locales', () => assert.deepEqual(Object.keys(STRINGS).sort(
 test('every locale has exactly the US English keys', () => {
   for (const loc of LOCALES) assert.deepEqual(Object.keys(STRINGS[loc]).sort(), Object.keys(en).sort(), loc);
 });
-test('found the keys in markup and code', () => assert.ok(used.size > 150, String(used.size)));
+test('found the keys in the engine client', () => assert.ok(used.size > 120, String(used.size)));
 for (const loc of LOCALES) {
   test(`${loc}: every used key, matching placeholders`, () => {
     const L = STRINGS[loc];

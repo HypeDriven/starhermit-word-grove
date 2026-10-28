@@ -1,8 +1,7 @@
 // Word Grove — strings for the StarHermit buttons and toasts (sign-in,
-// invite, signed out, leaderboard line), in the game language (main.js
+// invite, signed out, leaderboard line), in the game language (native/i18n.ts
 // passes i18n.js locale()).
 
-import { pickLocale } from './gfx-i18n.js';
 
 const EN = {
   signIn: 'Sign in with StarHermit',
@@ -97,6 +96,13 @@ const STRINGS = {
     lbNotPosted: 'Punteggio non inviato alla classifica.',
   },
 };
+
+function pickLocale(tag) {
+  const t = String(tag || 'en-US');
+  if (STRINGS[t]) return t;
+  const base = t.split('-')[0];
+  return Object.keys(STRINGS).find((l) => l.split('-')[0] === base) || 'en-US';
+}
 
 /** Translator for a locale with English fallback. */
 export function platformStrings(locale = globalThis.navigator?.language) {
