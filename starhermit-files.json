@@ -43,7 +43,7 @@
     "sfx/wheel-shuffle.opus": {"sha256": "ac696592f5953cb34f91442657e00302675d4a4d3c9d76e57e88bdde1e38f43a", "size": 20871},
     "sfx/word-planted.opus": {"sha256": "a55c5b24ac396289a7c4d1df289445f7d25a3104a604645331d154024153bd7a", "size": 21702},
     "sfx/word-rejected.opus": {"sha256": "166308b03e4c38cb2253c5198c98a49edd8b60be7b62fff6e3617325349b172c", "size": 12749},
-    "starhermit.txt": {"sha256": "2ad0ca58917a63a37ec52c6d78b073457a97e65abc13d3186d1b69a5e9cf9b10", "size": 2331}
+    "starhermit.txt": {"sha256": "46fd8c70ada2f245911a19ddf1925112ccc2378958af5c6e83f958ce4d2d0acf", "size": 2331}
   },
   "excluded": ["LICENSE.md", "coverart.png", "data/", "knownissues.md", "node_modules/", "package-lock.json", "package.json", "server.js", "sfx/manifest.json", "sfx/manifest.md", "spec.md", "tests/", "tools/", "tsconfig.json"],
   "format": 1
