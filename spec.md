@@ -1,6 +1,6 @@
 # Word Grove — specification
 
-Word Grove is a solo word puzzle: drag across a wheel of 5–7 letters (or type them) to spell words of three or more letters. Words on the compact crossword grid plant themselves and grow a flower in a 3D grove; other real words are bonus words. It is a StarHermit engine script game (engine 1.23.0, `engine.minor=24`) played natively by the StarHermit client and in browsers by the engine's web runtime.
+Word Grove is a solo word puzzle: drag across a wheel of 5–7 letters (or type them) to spell words of three or more letters. Words on the compact crossword grid plant themselves and grow a flower in a 3D grove; other real words are bonus words. It is a StarHermit engine script game (engine 1.24.0, `engine.minor=24`) played natively by the StarHermit client and in browsers by the engine's web runtime.
 
 ## Rules
 
