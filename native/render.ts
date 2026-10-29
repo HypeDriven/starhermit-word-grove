@@ -670,7 +670,8 @@ function rebuild(): void {
 export function applyLook(next: Look): void {
   if (look && JSON.stringify(look) === JSON.stringify(next)) return;
   look = next;
-  renderer.bloom = next.bloom ? { strength: 0.5, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.budget.bloomRes } : null;
+  // three r160 page: minor 29's r185 UnrealBloom is stronger, so the page's 0.5 is squared (0.25) to keep its look
+  renderer.bloom = next.bloom ? { strength: 0.25, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.budget.bloomRes } : null;
   renderer.ao = next.ao === "off" ? null : {
     blendIntensity: next.ao === "high" ? 0.85 : 0.7, radius: 0.45, distanceExponent: 1.5, thickness: 1.0, scale: 1.0, samples: next.ao === "high" ? 16 : 8,
     resolution: next.budget.aoRes,

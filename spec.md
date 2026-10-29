@@ -1,6 +1,6 @@
 # Word Grove — specification
 
-Word Grove is a solo word puzzle: drag across a wheel of 5–7 letters (or type them) to spell words of three or more letters. Words on the compact crossword grid plant themselves and grow a flower in a 3D grove; other real words are bonus words. It is a StarHermit engine script game (engine 1.24.0, `engine.minor=24`) played natively by the StarHermit client and in browsers by the engine's web runtime.
+Word Grove is a solo word puzzle: drag across a wheel of 5–7 letters (or type them) to spell words of three or more letters. Words on the compact crossword grid plant themselves and grow a flower in a 3D grove; other real words are bonus words. It is a StarHermit engine script game (engine 1.27.0, `engine.minor=29`) played natively by the StarHermit client and in browsers by the engine's web runtime.
 
 ## Rules
 
@@ -40,7 +40,7 @@ The runtime's Options own volumes and mute, graphics level and frame rate, langu
 
 ## Look and sound
 
-`native/render.ts` ports the browser build's three.js r160 grove to `starhermit:scene` with the page's own light, shadow and environment values (minor 24 = three r185 units, so no compensation): sky dome, displaced ground with grass speckle, hills, seeded trees, rocks, pond with ripple normals and lily pads, instanced grass, the log-slice wheel with brass rim, glazed letter tokens, the glowing selection path, flowers for every word, leaf bursts, fireflies (dusk/night) and pollen. Reflections are the page's sky environment prefiltered with `PMREMGenerator.fromScene`, given to each material at its own `envMapIntensity` (r160 behaviour). Post effects (GTAO, bloom, display-space grade + vignette, FXAA/SMAA/MSAA) follow the runtime's quality tier (`native/quality.ts`, the old four presets and budgets). Sounds are the authored `sfx/*.opus`; ambience (birds, rain, wind, crickets) and the adaptive chord music are rendered into looping clips.
+`native/render.ts` ports the browser build's three.js r160 grove to `starhermit:scene` with the page's own light, shadow and environment values (three r185 units, so no compensation): sky dome, displaced ground with grass speckle, hills, seeded trees, rocks, pond with ripple normals and lily pads, instanced grass, the log-slice wheel with brass rim, glazed letter tokens, the glowing selection path, flowers for every word, leaf bursts, fireflies (dusk/night) and pollen. Reflections are the page's sky environment prefiltered with `PMREMGenerator.fromScene`, given to each material at its own `envMapIntensity` (r160 behaviour). Post effects (GTAO, bloom — the page's 0.5 squared to 0.25, since minor 29's bloom is three r185's and stronger than r160's —, display-space grade + vignette, FXAA/SMAA/MSAA) follow the runtime's quality tier (`native/quality.ts`, the old four presets and budgets). Sounds are the authored `sfx/*.opus`; ambience (birds, rain, wind, crickets) and the adaptive chord music are rendered into looping clips.
 
 ## Platform
 
