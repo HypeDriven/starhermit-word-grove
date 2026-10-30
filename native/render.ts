@@ -670,17 +670,18 @@ function rebuild(): void {
 export function applyLook(next: Look): void {
   if (look && JSON.stringify(look) === JSON.stringify(next)) return;
   look = next;
-  // three r160 page: minor 29's r185 UnrealBloom is stronger, so the page's 0.5 is squared (0.25) to keep its look
-  renderer.bloom = next.bloom ? { strength: 0.25, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.budget.bloomRes } : null;
+  // three r160 page: r160 UnrealBloom at the page's strength
+  renderer.bloom = next.bloom ? { model: "r160", strength: 0.5, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.budget.bloomRes } : null;
   renderer.ao = next.ao === "off" ? null : {
     blendIntensity: next.ao === "high" ? 0.85 : 0.7, radius: 0.45, distanceExponent: 1.5, thickness: 1.0, scale: 1.0, samples: next.ao === "high" ? 16 : 8,
     resolution: next.budget.aoRes,
     denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: next.ao === "high" ? 6 : 4, rings: 2, samples: next.ao === "high" ? 16 : 8 },
   };
   // GradeShader after OutputPass (display space): a 0.18 S-curve, saturation 1.1, cool shadows / warm highlights by a
-  // smoothstep of luma 0.2–0.8, the 0.2 vignette from 0.38 to 0.9 (x stretched 1.1)
+  // smoothstep of luma 0.2–0.8, lifted × 0.975 + 0.018, the 0.2 vignette from 0.38 to 0.9 (x stretched 1.1)
   renderer.grade = next.grade ? {
-    space: "display", contrast: 0.09, saturation: 1.1, split: [0.2, 0.8], shadows: [0.97, 0.99, 1.04], highlights: [1.035, 1.0, 0.965],
+    space: "display", contrastCurve: "s", contrast: 0.18, saturation: 1.1, split: [0.2, 0.8], shadows: [0.97, 0.99, 1.04], highlights: [1.035, 1.0, 0.965],
+    levels: [0.975, 0.018],
     vignette: { amount: 0.2, inner: 0.38, outer: 0.9, scale: [1.1, 1] },
   } : null;
   renderer.antialias = next.antialias;
