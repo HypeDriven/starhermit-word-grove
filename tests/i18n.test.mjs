@@ -5,10 +5,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { STRINGS } from '../js/strings.js';
 import { THEMES, groves, CHALLENGES, PRACTICE_DIFFICULTIES, TUTORIAL_STEPS, ACHIEVEMENTS } from '../js/content.js';
 
 const LOCALES = ['en-US', 'en-GB', 'es-419', 'es-ES', 'de-DE', 'fr-FR', 'fr-CA', 'pt-BR', 'it-IT'];
+const STRINGS = JSON.parse(readFileSync(new URL('../assets/strings.json', import.meta.url), 'utf8'));
 const dir = new URL('../native/', import.meta.url);
 const code = readdirSync(dir).filter((f) => f.endsWith('.ts'))
   .map((f) => readFileSync(new URL(f, dir), 'utf8')).join('\n');
@@ -34,21 +34,21 @@ for (const loc of LOCALES) {
   });
   test(`${loc}: every content name`, () => {
     const L = STRINGS[loc];
-    for (const g of groves()) assert.ok(L.groves[g.index], `grove ${g.index}`);
-    for (const id of Object.keys(THEMES)) assert.ok(L.themes[id], `theme ${id}`);
-    for (const d of PRACTICE_DIFFICULTIES) assert.equal(L.difficulties[d.id]?.length, 2, `difficulty ${d.id}`);
-    for (const c of CHALLENGES) assert.equal(L.challenges[c.id]?.length, 2, `challenge ${c.id}`);
-    for (const st of TUTORIAL_STEPS) assert.equal(L.tutorial[st.id]?.length, 2, `tutorial ${st.id}`);
-    for (const a of ACHIEVEMENTS) assert.equal(L.achievements[a.key]?.length, 2, `achievement ${a.key}`);
+    for (const g of groves()) assert.ok(L[`groves.${g.index}`], `grove ${g.index}`);
+    for (const id of Object.keys(THEMES)) assert.ok(L[`themes.${id}`], `theme ${id}`);
+    for (const d of PRACTICE_DIFFICULTIES) assert.ok(L[`difficulties.${d.id}.0`] && L[`difficulties.${d.id}.1`], `difficulty ${d.id}`);
+    for (const c of CHALLENGES) assert.ok(L[`challenges.${c.id}.0`] && L[`challenges.${c.id}.1`], `challenge ${c.id}`);
+    for (const st of TUTORIAL_STEPS) assert.ok(L[`tutorial.${st.id}.0`] && L[`tutorial.${st.id}.1`], `tutorial ${st.id}`);
+    for (const a of ACHIEVEMENTS) assert.ok(L[`achievements.${a.key}.0`] && L[`achievements.${a.key}.1`], `achievement ${a.key}`);
   });
 }
 test('English content strings match the authored data', () => {
-  for (const g of groves()) assert.equal(en.groves[g.index], g.name);
-  for (const [id, th] of Object.entries(THEMES)) assert.equal(en.themes[id], th.name);
-  for (const d of PRACTICE_DIFFICULTIES) assert.deepEqual(en.difficulties[d.id], [d.label, d.note]);
-  for (const c of CHALLENGES) assert.deepEqual(en.challenges[c.id], [c.label, c.desc]);
-  for (const st of TUTORIAL_STEPS) assert.deepEqual(en.tutorial[st.id], [st.title, st.body]);
-  for (const a of ACHIEVEMENTS) assert.deepEqual(en.achievements[a.key], [a.name, a.desc]);
+  for (const g of groves()) assert.equal(en[`groves.${g.index}`], g.name);
+  for (const [id, th] of Object.entries(THEMES)) assert.equal(en[`themes.${id}`], th.name);
+  for (const d of PRACTICE_DIFFICULTIES) assert.deepEqual([en[`difficulties.${d.id}.0`], en[`difficulties.${d.id}.1`]], [d.label, d.note]);
+  for (const c of CHALLENGES) assert.deepEqual([en[`challenges.${c.id}.0`], en[`challenges.${c.id}.1`]], [c.label, c.desc]);
+  for (const st of TUTORIAL_STEPS) assert.deepEqual([en[`tutorial.${st.id}.0`], en[`tutorial.${st.id}.1`]], [st.title, st.body]);
+  for (const a of ACHIEVEMENTS) assert.deepEqual([en[`achievements.${a.key}.0`], en[`achievements.${a.key}.1`]], [a.name, a.desc]);
 });
 test('non-English locales are translated', () => {
   for (const loc of LOCALES.filter((l) => !l.startsWith('en'))) {

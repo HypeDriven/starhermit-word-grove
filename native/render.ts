@@ -451,7 +451,7 @@ function buildEnvironment(g: Group): void {
   const shadows = look!.shadows;
   renderer.shadowMap.enabled = shadows > 0;
   key.castShadow = shadows > 0;
-  if (shadows > 0) key.shadow.mapSize = shadows;
+  if (shadows > 0) key.shadow.mapSize = shadows; // the level's size: at minor 23+ the engine keeps the game's
 
   const groundGeo = new CircleGeometry(26, seg(detail.textures ? 96 : 48, 24), 0, Math.PI * 2);
   groundGeo.rotateX(-Math.PI / 2);
@@ -671,11 +671,12 @@ export function applyLook(next: Look): void {
   if (look && JSON.stringify(look) === JSON.stringify(next)) return;
   look = next;
   // three r160 page: r160 UnrealBloom at the page's strength
-  renderer.bloom = next.bloom ? { model: "r160", strength: 0.5, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.budget.bloomRes } : null;
-  renderer.ao = next.ao === "off" ? null : {
-    blendIntensity: next.ao === "high" ? 0.85 : 0.7, radius: 0.45, distanceExponent: 1.5, thickness: 1.0, scale: 1.0, samples: next.ao === "high" ? 16 : 8,
-    resolution: next.budget.aoRes,
-    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: next.ao === "high" ? 6 : 4, rings: 2, samples: next.ao === "high" ? 16 : 8 },
+  renderer.bloom = next.bloom === null ? null : { model: "r160", strength: 0.5, radius: 0.5, threshold: BLOOM_THRESHOLD, resolution: next.bloom };
+  const ao = next.ao, fullAo = !!ao && ao.resolution >= 1; // the engine's AO "high" is full resolution
+  renderer.ao = ao && {
+    blendIntensity: fullAo ? 0.85 : 0.7, radius: 0.45, distanceExponent: 1.5, thickness: 1.0, scale: 1.0, samples: ao.samples,
+    resolution: ao.resolution,
+    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: fullAo ? 6 : 4, rings: 2, samples: ao.denoiseSamples },
   };
   // GradeShader after OutputPass (display space): a 0.18 S-curve, saturation 1.1, cool shadows / warm highlights by a
   // smoothstep of luma 0.2–0.8, lifted × 0.975 + 0.018, the 0.2 vignette from 0.38 to 0.9 (x stretched 1.1)

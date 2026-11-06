@@ -29,11 +29,9 @@ import {
 // ------------------------------------------------------------------ layout helpers
 interface Layout { lw: number; lh: number; sc: number; ox: number; oy: number; portrait: boolean; short: boolean; phone: boolean }
 function layoutNow(): Layout {
-  const f = frame();
-  const sc = ui.preferences().scale;
-  const sa = f.safeArea;
-  const lw = Math.max(1, (f.width - sa.left - sa.right) / sc), lh = Math.max(1, (f.height - sa.top - sa.bottom) / sc);
-  return { lw, lh, sc, ox: sa.left, oy: sa.top, portrait: lh >= lw, short: lh <= 500 && lw > lh, phone: lw < 600 };
+  const v = ui.viewport!();
+  const lw = Math.max(1, v.width), lh = Math.max(1, v.height);
+  return { lw, lh, sc: v.scale, ox: v.x, oy: v.y, portrait: lh >= lw, short: lh <= 500 && lw > lh, phone: lw < 600 };
 }
 function tw(text: string, style: string, kind?: "button" | "heading"): number {
   return ui.measureText(text, { ...(kind ? { kind } : {}), style: [style] }).width / ui.preferences().scale;
@@ -66,18 +64,12 @@ function button(b: Btn): void {
   if (ui.style(style, s).id(b.id).button(name, opts) && fresh()) later(b.silent ? b.act : click(b.act));
 }
 function flow(label: string, list: Btn[], width: number, gap = 10, justify: "start" | "center" = "center"): void {
-  const rows: Btn[][] = [[]];
-  let used = 0;
-  const bw = (b: Btn): number => Math.min(width, b.width ?? btnWidth(b));
-  for (const b of list) {
-    const w = bw(b);
-    if (rows[rows.length - 1]!.length && used + gap + w > width) { rows.push([]); used = 0; }
-    used += (rows[rows.length - 1]!.length ? gap : 0) + w;
-    rows[rows.length - 1]!.push(b);
-  }
-  ui.column(label, () => {
-    rows.forEach((row, ri) => ui.row(`${label}-r${ri}`, () => { for (const b of row) button({ ...b, width: bw(b) }); }, { spacing: gap, width, justify, align: "center" }));
-  }, { spacing: gap, width });
+  ui.row(label, () => {
+    for (const b of list) {
+      const w = b.width ?? (btnWidth(b) > width ? width : null);
+      button(w === null ? b : { ...b, width: Math.min(width, w) });
+    }
+  }, { wrap: true, width, gap, justify, align: "center" });
 }
 function gridOf<X>(label: string, items: X[], width: number, cols: number, gap: number, cell: (item: X, w: number, i: number) => void): void {
   const cw = (width - gap * (cols - 1)) / cols;

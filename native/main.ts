@@ -19,14 +19,14 @@
 // runtime fixed step while the round screen shows (as ui.tick advanced it
 // per frame), so rounds replay exactly; delays (feedback, toasts, the
 // results after a round ends) run on the same fixed-step clock.
-import { clipboard, frame, onFixedUpdate, onPreferencesChange, onRender, onResume, onStart, onSuspend, onUpdate, preferences, setFixedRate } from "starhermit:engine";
+import { levelSettings, createTimers, afterRender, clipboard, frame, onFixedUpdate, onPreferencesChange, onRender, onResume, onStart, onSuspend, onUpdate, preferences, setFixedRate } from "starhermit:engine";
 import { bindings, onAction, onKey, onPointerButton, onPointerMove, onTouch, vibrate } from "starhermit:input";
 import * as ui from "starhermit:ui";
 import { onSessionEnded, requestSignIn } from "starhermit:platform";
 import { C, Session, compareResults, legalActions, sessionSeedCode, type Level, type Session as Sess, type SessionEvent, type Summary } from "./game.ts";
 import * as audio from "./audio.ts";
 import * as gen from "./gen.ts";
-import { S, T, TN, player as playerLabel } from "./i18n.ts";
+import { S, T, TN, player as playerLabel, themeLabel } from "./i18n.ts";
 import * as platform from "./platform.ts";
 import { lookFor } from "./quality.ts";
 import * as render from "./render.ts";
@@ -69,18 +69,8 @@ export const nowMs = (): number => clockMs;
 export const fresh = (): boolean => frame().frame !== app.openedFrame;
 
 // ------------------------------------------------------------------ fixed-step timers
-interface Timer { id: number; at: number; fn: () => void }
-const timerList: Timer[] = [];
-let timerId = 1;
-export function after(ms: number, fn: () => void): number { const id = timerId++; timerList.push({ id, at: clockMs + ms, fn }); return id; }
-function runTimers(): void {
-  for (let guard = 0; guard < 32; guard++) {
-    const i = timerList.findIndex((t) => t.at <= clockMs);
-    if (i < 0) return;
-    const [t] = timerList.splice(i, 1);
-    t!.fn();
-  }
-}
+const timers = createTimers!();
+export function after(ms: number, fn: () => void): number { return timers.after(Math.max(0, ms) / 1000, fn); }
 
 // ------------------------------------------------------------------ helpers
 const spoken: string[] = [];
@@ -96,9 +86,8 @@ export function toast(text: string, gold = false): void {
   if (app.toasts.length > 3) app.toasts.shift();
   announce(text);
 }
-const pending: (() => void)[] = [];
 /** A widget's press, run once the frame's UI is built. */
-export function later(fn: () => void): void { pending.push(fn); }
+export function later(fn: () => void): void { afterRender(fn); }
 export function sfx(ev: audio.Sfx): void {
   audio.play(ev);
   const cap = audio.CAPTIONS[ev];
@@ -284,7 +273,7 @@ export function cycleTheme(): void {
   const locked = Object.values(C.THEMES).find((t) => p.flowers < t.unlock);
   if (locked) toast(T("themeToast", { theme: themeText(next.id), next: themeText(locked.id), n: locked.unlock }));
 }
-export const themeText = (id: string): string => TN("themes", id, [C.THEMES[id]?.name ?? id]) as unknown as string;
+export const themeText = (id: string): string => themeLabel(id, C.THEMES[id]?.name ?? id);
 export function modeLabel(level: Level): string {
   if (level.mode === "journey") return T("modeJourney", { n: (level.journeyIndex ?? 0) + 1 }) + (level.mastery ? " ✦" : "");
   if (level.mode === "daily") return T("modeDaily");
@@ -517,10 +506,10 @@ async function finishRound(left = false): Promise<void> {
   // signed in, every finished round except Learn lessons (and rounds left early) posts its total
   if (platform.signedIn() && summary.mode !== "learn" && !left && summary.terminalReason !== "abandoned") {
     const r = app.results;
-    app.lb = { key: "lbPosting" };
+    app.lb = { key: "leaderboardPosting" };
     void platform.postScore(summary.score).then((res) => {
       if (app.results !== r) return;
-      app.lb = !res.posted ? { key: "lbNotPosted" } : res.rank ? { key: "lbRank", vars: { rank: res.rank } } : { key: "lbPosted" };
+      app.lb = !res.posted ? { key: "leaderboardNotPosted" } : res.rank ? { key: "leaderboardRank", vars: { rank: res.rank } } : { key: "leaderboardPosted" };
     });
   }
   if (dailyBoard) {
@@ -592,7 +581,7 @@ export function signIn(): void { void requestSignIn().catch(() => undefined); }
 export function invite(): void {
   const link = platform.inviteLink();
   if (!link) return;
-  try { clipboard.writeText(link); toast(S("inviteCopied")); } catch { toast(S("inviteFailed", { link })); }
+  try { clipboard.writeText(link); toast(S("inviteCopied")); } catch { toast(S("inviteLink", { link })); }
 }
 export function editName(): void {
   if (platform.signedIn()) { toast(T("hostedName")); return; }
@@ -744,15 +733,14 @@ onFixedUpdate(() => {
       audio.intensity(found / Math.max(1, s.state.targets.length));
     }
   }
-  runTimers();
+  timers.advance(1 / 60);
 });
-let lookKey = "";
+let lookKey: string | null = null;
 function applyLook(): void {
   const f = frame();
-  const k = `${f.quality}:${f.levelIndex}`;
-  if (k === lookKey) return;
-  lookKey = k;
-  render.applyLook(lookFor(f.quality, f.levelIndex));
+  if (f.level === lookKey) return;
+  lookKey = f.level;
+  render.applyLook(lookFor(levelSettings(f.level)));
 }
 function textColor(): string {
   const pal = platform.options.palette;
@@ -805,9 +793,10 @@ onRender(() => {
   const f = frame();
   render.frame(frameDt, f.width, f.height);
   drawScreens();
-  for (const fn of pending.splice(0)) fn();
-  pointerInput(wasActive);
-  flushAnnouncements();
+  afterRender(() => { // after the frame's presses (added earlier), as the old queue ran, before the scene is drawn
+    pointerInput(wasActive);
+    flushAnnouncements();
+  });
 });
 export function preparingShown(): boolean { return !!app.preparing && clockMs - app.preparing.since > 300; }
 export { legalActions };

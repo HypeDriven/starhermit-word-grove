@@ -7,14 +7,14 @@
 // adaptive music (the four four-second chords as sines at 0.05 + intensity ×
 // 0.03; above intensity 0.4 the octave layer, above 0.7 the arpeggio note)
 // on the old music bus × 0.5: the chord loop and the two upper layers are
-// rendered once into clips and the layers fade in with the intensity. The
-// runtime has no ambience bus, so the ambience plays on the music bus. Loops
-// are rendered in slices across frames (per-sample work is slow natively);
-// the synthesized blips audio.js played while a sample loaded are not
-// ported (a live synthesis graph makes clip loads fail on the web runtime):
-// a clip still loading is silent. The runtime's Options own the volumes, the
-// mute and the voice limit; clips load once the mixer runs, one at a time.
-import { context, createClip, loadClip, play as playClip, type AudioClip, type Sound } from "starhermit:audio";
+// rendered once offline into clips (laid end to end in one context) and the
+// layers fade in with the intensity. The runtime has no ambience bus, so the
+// ambience plays on the music bus. Each theme's ambience renders once, when it
+// is first wanted: at most five offline renders. The synthesized blips audio.js
+// played while a sample loaded are not ported: a clip still loading is silent.
+// The runtime's Options own the volumes, the mute and the voice limit; clips
+// load at start.
+import { OfflineAudioContext, context, createClip, loadClip, play as playClip, type AudioClip, type Sound } from "starhermit:audio";
 
 export type Sfx = "select" | "deselect" | "invalid" | "word-bonus" | "word-target" | "pangram" | "shuffle" | "hint" | "undo" | "complete" | "failed"
   | "pause" | "resume" | "ui" | "achievement";
@@ -29,113 +29,102 @@ export const CAPTIONS: Partial<Record<Sfx, string>> = {
   complete: "cap_complete", failed: "cap_failed", achievement: "cap_achievement",
 };
 const clips = new Map<string, AudioClip>();
-const queue: string[] = [];
-let loading = false;
-let wantClips = false;
-export function loadSfx(): void { wantClips = true; }
 export function play(ev: Sfx): void {
-  const name = SAMPLES[ev];
-  const clip = clips.get(name);
+  const clip = clips.get(SAMPLES[ev]);
   if (!clip) return;
-  try { playClip(clip, { bus: "effects" }); } catch { clips.delete(name); if (!queue.includes(name)) queue.push(name); }
+  try { playClip(clip, { bus: "effects" }); } catch { /* the mixer is full this frame: skip it */ }
 }
 
 // ---- rendered loops ---------------------------------------------------------------------------
 const RATE = 22050;
-const SINE = new Float32Array(4096);
-for (let i = 0; i < SINE.length; i++) SINE[i] = Math.sin((i / SINE.length) * Math.PI * 2);
-const sin = (phase: number): number => SINE[Math.floor((phase - Math.floor(phase)) * 4096) & 4095]!;
 let seed = 0x6a7e;
 const rand = (): number => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-interface Job { data: Float32Array; pos: number; fill: (from: number, to: number) => void; post?: () => void; clip: AudioClip | null }
-function lowpass(freq: number): (x: number) => number {
-  const w0 = (2 * Math.PI * freq) / RATE, al = Math.sin(w0) / 2, cw = Math.cos(w0);
-  const b0 = (1 - cw) / 2 / (1 + al), b1 = (1 - cw) / (1 + al), a1 = (-2 * cw) / (1 + al), a2 = (1 - al) / (1 + al);
-  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-  return (x) => { const y = b0 * x + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; return y; };
-}
 /** A blip (audio.js blip): attack 8 ms, exponential decay to `dur`. */
-function addBlip(d: Float32Array, at: number, freq: number, dur: number, gain: number, wave: "sine" | "square" = "sine"): void {
-  const start = Math.floor(at * RATE), n = Math.floor(dur * RATE), att = Math.floor(0.008 * RATE);
-  const k = Math.exp(Math.log(0.0001) / Math.max(1, n - att));
-  let env = 1, ph = 0;
-  const step = freq / RATE;
-  for (let i = 0; i < n; i++) {
-    const e = i < att ? i / att : (env *= k);
-    ph += step;
-    const v = wave === "sine" ? sin(ph) : (ph - Math.floor(ph) < 0.5 ? 1 : -1);
-    const j = (start + i) % d.length;
-    d[j] = d[j]! + v * e * gain;
-  }
+function addBlip(off: OfflineAudioContext, at: number, freq: number, dur: number, gain: number, wave: "sine" | "square" = "sine"): void {
+  const osc = off.createOscillator();
+  osc.type = wave;
+  osc.frequency.value = freq;
+  const g = off.createGain();
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(gain, at + 0.008);
+  g.gain.exponentialRampToValueAtTime(gain * 0.0001, at + dur);
+  osc.connect(g); g.connect(off.destination);
+  osc.start(at); osc.stop(at + dur);
 }
-function ambienceJob(kind: string): Job {
+function lowpass(off: OfflineAudioContext, freq: number): ReturnType<OfflineAudioContext["createBiquadFilter"]> {
+  const lp = off.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = freq; lp.Q.value = 0; // Q 1 (0 dB), the old RBJ's
+  lp.connect(off.destination);
+  return lp;
+}
+/** The rendered loop after `settle` seconds, once the filter has settled on the periodic input. */
+async function loopClip(off: OfflineAudioContext, settle: number): Promise<AudioClip> {
+  const r = await off.startRendering();
+  return createClip([r.getChannelData(0).slice(Math.round(settle * RATE))], RATE);
+}
+function renderAmbience(kind: string): Promise<AudioClip> {
+  const settle = 1;
   if (kind === "rain") {
-    const lp = lowpass(1800);
-    for (let i = 0; i < 2000; i++) lp(rand() * 2 - 1);
-    const data = new Float32Array(RATE * 2);
-    return { data, pos: 0, clip: null, fill: (a, b) => { for (let i = a; i < b; i++) data[i] = lp(rand() * 2 - 1); }, post: () => seam(data, Math.round(RATE * 0.05)) };
+    const off = new OfflineAudioContext(1, (settle + 2) * RATE, RATE);
+    const noise = off.createNoise({ color: "white", seed: 0x6a7e, seconds: 2 });
+    noise.connect(lowpass(off, 1800));
+    noise.start();
+    return loopClip(off, settle);
   }
-  const len = RATE * 16;
-  const data = new Float32Array(len);
-  const lp = lowpass(400);
-  const f0 = kind === "wind" ? 90 : 140;
-  for (let i = 0; i < 2000; i++) lp(sin((f0 * i) / RATE));
-  return {
-    data, pos: 0, clip: null,
-    fill: (a, b) => { for (let i = a; i < b; i++) data[i] = lp(sin((f0 * i) / RATE)); },
-    post: () => {
-      if (kind === "birds") {
-        for (let t = rand() * 2; t < 15.5; t += 2.5 + rand() * 4) {
-          const base = 1800 + rand() * 1200;
-          addBlip(data, t, base, 0.09, 0.1);
-          addBlip(data, t + 0.1, base * 1.2, 0.07, 0.08);
-        }
-      } else if (kind === "crickets") {
-        for (let t = rand() * 3; t < 15.5; t += 4 + rand() * 4) for (let i = 0; i < 3; i++) addBlip(data, t + i * 0.05, 4200, 0.03, 0.03, "square");
-      }
-    },
-  };
-}
-function seam(d: Float32Array, f: number): void {
-  for (let i = 0; i < f; i++) { const k = i / f; d[d.length - f + i] = d[d.length - f + i]! * (1 - k) + d[i]! * k; }
+  const off = new OfflineAudioContext(1, (settle + 16) * RATE, RATE);
+  const pad = off.createOscillator();
+  pad.frequency.value = kind === "wind" ? 90 : 140; // whole cycles in the 16 s loop
+  pad.connect(lowpass(off, 400));
+  pad.start();
+  if (kind === "birds") {
+    for (let t = rand() * 2; t < 15.5; t += 2.5 + rand() * 4) {
+      const base = 1800 + rand() * 1200;
+      addBlip(off, settle + t, base, 0.09, 0.1);
+      addBlip(off, settle + t + 0.1, base * 1.2, 0.07, 0.08);
+    }
+  } else if (kind === "crickets") {
+    for (let t = rand() * 3; t < 15.5; t += 4 + rand() * 4) for (let i = 0; i < 3; i++) addBlip(off, settle + t + i * 0.05, 4200, 0.03, 0.03, "square");
+  }
+  return loopClip(off, settle);
 }
 const CHORDS = [[261.6, 329.6, 392.0], [220.0, 261.6, 329.6], [174.6, 220.0, 261.6], [196.0, 246.9, 293.7]];
-/** layer 0: the chords; 1: the octave layer; 2: an arpeggio note per chord (audio.js startMusic). */
-function musicJob(layer: number): Job {
-  const data = new Float32Array(RATE * 16);
-  return {
-    data, pos: 0, clip: null,
-    fill: (a, b) => { if (a === 0) data.fill(0); void b; },
-    post: () => {
-      CHORDS.forEach((chord, ci) => {
-        const t0 = ci * 4;
-        chord.forEach((f, i) => {
-          if (layer === 0) addBlip(data, t0 + i * 0.02, f, 3.6, 0.05);
-          if (layer === 1) addBlip(data, t0 + 0.3 + i * 0.02, f * 2, 2, 0.02);
-        });
-        if (layer === 2) addBlip(data, t0 + 2, chord[Math.floor(rand() * chord.length)]! * 2, 0.4, 0.03);
-      });
-    },
-  };
-}
-function run(job: Job, budget: number): void {
-  if (job.clip) return;
-  const end = Math.min(job.data.length, job.pos + budget);
-  job.fill(job.pos, end);
-  job.pos = end;
-  if (job.pos < job.data.length) return;
-  job.post?.();
-  try { job.clip = createClip([job.data], RATE); } catch (e) { console.warn(`audio: ${String(e)}`); job.pos = 0; }
+const LAYER_S = 16;
+/** Three 16 s layers end to end in one context; 0: the chords; 1: the octave layer; 2: an arpeggio note per chord (audio.js startMusic). */
+async function renderMusic(): Promise<AudioClip[]> {
+  const off = new OfflineAudioContext(1, 3 * LAYER_S * RATE, RATE);
+  CHORDS.forEach((chord, ci) => {
+    const t0 = ci * 4;
+    chord.forEach((f, i) => {
+      addBlip(off, t0 + i * 0.02, f, 3.6, 0.05);
+      addBlip(off, LAYER_S + t0 + 0.3 + i * 0.02, f * 2, 2, 0.02);
+    });
+    addBlip(off, 2 * LAYER_S + t0 + 2, chord[Math.floor(rand() * chord.length)]! * 2, 0.4, 0.03);
+  });
+  const r = (await off.startRendering()).getChannelData(0), n = LAYER_S * RATE;
+  return [0, 1, 2].map((i) => createClip([r.slice(i * n, (i + 1) * n)], RATE));
 }
 
-const ambJobs = new Map<string, Job>();
+/** Loads every clip and renders the music (from onStart). */
+export function loadSfx(): void {
+  for (const name of new Set(Object.values(SAMPLES))) {
+    loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); }, (e: unknown) => console.warn(`sfx ${name}: ${e instanceof Error ? e.message : String(e)}`));
+  }
+  renderMusic().then((c) => { music = c; }, (e: unknown) => console.warn(`audio: ${String(e)}`));
+}
+
+const ambClips = new Map<string, AudioClip | null>(); // null: rendering (or failed)
 let ambWant: string | null = null;
 let ambKind = "";
 let ambVoice: Sound | null = null;
 /** audio.js startAmbience(kind) / stopAmbience (null). */
-export function ambience(kind: string | null): void { ambWant = kind; }
+export function ambience(kind: string | null): void {
+  ambWant = kind;
+  if (!kind || ambClips.has(kind)) return;
+  ambClips.set(kind, null);
+  renderAmbience(kind).then((c) => { ambClips.set(kind, c); }, (e: unknown) => console.warn(`audio: ${String(e)}`));
+}
 
-const music = [musicJob(0), musicJob(1), musicJob(2)];
+let music: AudioClip[] = [];
 const voices: (Sound | null)[] = [null, null, null];
 let musicOn = false;
 let level = 0;
@@ -148,41 +137,24 @@ export function intensity(v: number): void {
   voices.forEach((s, i) => { try { s?.fade(layerGain(i), 1.5); } catch { /* gone */ } });
 }
 
-/** Each frame: clips one at a time once the mixer runs, loop slices, the loop voices. */
+/** Each frame: the loop voices once the mixer runs. */
 export function update(): void {
   if (context.state !== "running") return;
-  if (wantClips) {
-    wantClips = false;
-    for (const n of Object.values(SAMPLES)) if (!queue.includes(n)) queue.push(n);
-  }
-  if (!loading && queue.length) {
-    const name = queue.shift()!;
-    if (!clips.has(name)) {
-      loading = true;
-      loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); loading = false; }, (e: unknown) => {
-        console.warn(`sfx ${name}: ${e instanceof Error ? e.message : String(e)}`);
-        loading = false;
-      });
-    }
-  }
   if (ambWant) {
-    let job = ambJobs.get(ambWant);
-    if (!job) { job = ambienceJob(ambWant); ambJobs.set(ambWant, job); }
-    run(job, 3000);
-    if (job.clip && ambKind !== ambWant) {
+    const clip = ambClips.get(ambWant);
+    if (clip && ambKind !== ambWant) {
       try { ambVoice?.stop(); } catch { /* gone */ }
       ambKind = ambWant;
-      try { ambVoice = playClip(job.clip, { bus: "music", gain: 0.5 * 0.7, loop: true }); } catch { ambVoice = null; ambKind = ""; }
+      try { ambVoice = playClip(clip, { bus: "music", gain: 0.5 * 0.7, loop: true }); } catch { ambVoice = null; ambKind = ""; }
     }
   } else if (ambVoice) {
     try { ambVoice.stop(); } catch { /* gone */ }
     ambVoice = null;
     ambKind = "";
   }
-  for (const j of music) if (!j.clip) { run(j, RATE * 16); break; }
-  music.forEach((j, i) => {
-    if (musicOn && j.clip && !voices[i] && music.every((m) => m.clip)) {
-      try { voices[i] = playClip(j.clip, { bus: "music", gain: layerGain(i), loop: true }); } catch { voices[i] = null; }
+  music.forEach((clip, i) => {
+    if (musicOn && !voices[i]) {
+      try { voices[i] = playClip(clip, { bus: "music", gain: layerGain(i), loop: true }); } catch { voices[i] = null; }
     } else if (!musicOn && voices[i]) {
       try { voices[i]!.stop(); } catch { /* gone */ }
       voices[i] = null;
