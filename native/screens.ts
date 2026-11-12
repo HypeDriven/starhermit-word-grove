@@ -1,3 +1,8 @@
+import { localizedStyle as __l10nStyle } from "./l10n/font.ts";
+import { localizedDrawOptions as __l10nDrawOptions } from "./l10n/font.ts";
+// localization-runtime:attached
+import { localizedFont as __l10nFont } from "./l10n/font.ts";
+import { openLocalizedOptions as __l10nOptions } from "./l10n/menu.ts";
 // The browser build's DOM shell (index.html + js/ui.js + css/style.css) as
 // starhermit:ui, built every frame over the grove: the title (logo, Play,
 // the six mode cards, Theme / Settings / Help / Sign in / Invite, the
@@ -12,7 +17,21 @@
 // grove…" line and the toasts. The old media queries are layouts picked by
 // the window's logical size; the phone-landscape layout is HUD rail |
 // lesson + grid column | wheel, as before.
-import { frame, openMenu } from "starhermit:engine";
+// The browser build's DOM shell (index.html + js/ui.js + css/style.css) as
+// starhermit:ui, built every frame over the grove: the title (logo, Play,
+// the six mode cards, Theme / Settings / Help / Sign in / Invite, the
+// gardener line with the cloud status), Journey (six groves of eight stage
+// nodes), Challenges, Score chase (seed field, Play seed, New random seed,
+// the chase board), the round (the HUD with Pause, mode and progress, timer,
+// tries and score chips; the lesson bar; the crossword grid; the current
+// word, feedback, the wheel buttons Shuffle / Hint / Undo / Clear / Submit
+// and the bonus line; named targets over the wheel's letters for screen
+// readers and play scripts), the results panel, the sheets (pause,
+// settings, how to play, practice setup, gardener name), the "Growing the
+// grove…" line and the toasts. The old media queries are layouts picked by
+// the window's logical size; the phone-landscape layout is HUD rail |
+// lesson + grid column | wheel, as before.
+import { frame } from "starhermit:engine";
 import * as draw from "starhermit:draw";
 import * as ui from "starhermit:ui";
 import { C, legalActions, totalScore } from "./game.ts";
@@ -38,7 +57,7 @@ function tw(text: string, style: string, kind?: "button" | "heading"): number {
 }
 function para(text: string, width: number, cls = "text", id?: string): void {
   if (!text) return;
-  let u = ui.style(cls);
+  let u = ui.style(__l10nStyle(cls));
   if (id) u = u.id(id);
   if (tw(text, cls) <= width) u.label(text);
   else u.paragraph(text, Math.max(20, width));
@@ -56,12 +75,12 @@ function button(b: Btn): void {
   const inner = (b.width ?? btnWidth(b)) - (padX[style] ?? 40) - 4;
   if (b.content) opts.content = b.content;
   else if (b.lines) { const lines = b.lines; opts.content = () => { for (const l of lines) para(l.text, inner, l.cls); }; }
-  else if (b.width != null && btnWidth(b) > b.width) opts.content = () => { ui.style(style === "btn-primary" || style === "btn-big" ? "wrap-light" : "wrap").paragraph(b.text, Math.max(20, inner)); };
+  else if (b.width != null && btnWidth(b) > b.width) opts.content = () => { ui.style(__l10nStyle(style === "btn-primary" || style === "btn-big" ? "wrap-light" : "wrap")).paragraph(b.text, Math.max(20, inner)); };
   const s: ui.Style = {};
   if (b.width != null) s.width = b.width;
   if (b.height != null) s.height = b.height;
   const name = b.name ?? (b.lines ? b.lines.map((l) => l.text).join(". ") : b.text);
-  if (ui.style(style, s).id(b.id).button(name, opts) && fresh()) later(b.silent ? b.act : click(b.act));
+  if (ui.style(__l10nStyle(style), __l10nStyle(s)).id(b.id).button(name, opts) && fresh()) later(b.silent ? b.act : click(b.act));
 }
 function flow(label: string, list: Btn[], width: number, gap = 10, justify: "start" | "center" = "center"): void {
   ui.row(label, () => {
@@ -95,7 +114,7 @@ export function drawScreens(): void {
   else page(L);
   if (app.overlay) overlay(L);
   if (preparingShown()) {
-    ui.place("thinking", { anchor: "center" }, () => ui.row("thinking-row", () => ui.style("toast-text").label(T("preparing")), { style: "toast" }));
+    ui.place("thinking", { anchor: "center" }, () => ui.row("thinking-row", () => ui.style(__l10nStyle("toast-text")).label(T("preparing")), { style: "toast" }));
   }
   toasts(L);
   if (app.focusNext) {
@@ -125,10 +144,10 @@ function title(L: Layout): void {
   scroller(L, "title", 680, (w) => {
     ui.column("hero", () => {
       ui.row("logo", () => {
-        ui.style(compact ? "logo-s" : "logo").label("Word ");
-        ui.style(compact ? "logo-gold-s" : "logo-gold").label("Grove");
+        ui.style(__l10nStyle(compact ? "logo-s" : "logo")).label("Word ");
+        ui.style(__l10nStyle(compact ? "logo-gold-s" : "logo-gold")).label("Grove");
       }, { align: "end" });
-      ui.style("tagline").label(T("tagline"));
+      ui.style(__l10nStyle("tagline")).label(T("tagline"));
     }, { align: "center", spacing: 2 });
     button({ id: "btn-play", style: "btn-big", text: done ? T("playDaily") : nextIdx === 0 && !p.tutorialDone ? T("learnAndPlay") : T("continueJourney"), act: playPrimary });
     const cards = [
@@ -152,10 +171,10 @@ function title(L: Layout): void {
     flow("title-footer", foot, w, 6);
     const sync = platform.syncState();
     ui.row("profile-line", () => {
-      ui.style("light-dim").label(T("gardenerLabel"));
+      ui.style(__l10nStyle("light-dim")).label(T("gardenerLabel"));
       button({ id: "btn-profile-name", style: "link-btn", text: profileName(), act: editName });
-      ui.style("light-dim").label(`· ${p.flowers} ${T("bloomsLabel")}`);
-      if (sync !== "local") ui.style("light-dim").label(T(sync === "saving" ? "syncSaving" : sync === "offline" ? "syncError" : "syncSynced"));
+      ui.style(__l10nStyle("light-dim")).label(`· ${p.flowers} ${T("bloomsLabel")}`);
+      if (sync !== "local") ui.style(__l10nStyle("light-dim")).label(T(sync === "saving" ? "syncSaving" : sync === "offline" ? "syncError" : "syncSynced"));
     }, { spacing: 6, align: "center" });
   }, L.short ? 8 : Math.max(12, L.lh * 0.12));
 }
@@ -164,7 +183,7 @@ function title(L: Layout): void {
 function head(label: string, text: string, w: number): void {
   ui.row(label, () => {
     button({ id: "btn-back", style: "btn", text: T("back"), act: goBack });
-    ui.style("h2-light").label(text);
+    ui.style(__l10nStyle("h2-light")).label(text);
   }, { spacing: 12, width: w, align: "center" });
 }
 function page(L: Layout): void {
@@ -180,9 +199,9 @@ function journey(w: number): void {
     ui.column(`grove-${g.index}`, () => {
       const done = Object.keys(p.journey).filter((i) => Math.floor(Number(i) / 8) === g.index).length;
       ui.row(`grove-h-${g.index}`, () => {
-        ui.style("h3").label(grove(g.index, g.name));
+        ui.style(__l10nStyle("h3")).label(grove(g.index, g.name));
         ui.spacer();
-        ui.style("h3-small").label(T("groveDone", { done, theme: themeText(g.theme) }));
+        ui.style(__l10nStyle("h3-small")).label(T("groveDone", { done, theme: themeText(g.theme) }));
       }, { width: w - 28, align: "center" });
       const gap = 8;
       const nw = Math.min(56, Math.floor((w - 28 - gap * 7) / 8));
@@ -196,7 +215,7 @@ function journey(w: number): void {
           const stars = rec ? "★".repeat(rec.stars) : s === 7 ? "✦" : "";
           button({
             id: `stage-${idx}`, style: cls, text: String(idx + 1), name, width: nw, height: nw, disabled: locked, act: () => startJourney(idx),
-            content: () => ui.column(`sn-${idx}`, () => { ui.style("node-num").label(String(idx + 1)); if (stars) ui.style("node-stars").label(stars); }, { align: "center", spacing: 0 }),
+            content: () => ui.column(`sn-${idx}`, () => { ui.style(__l10nStyle("node-num")).label(String(idx + 1)); if (stars) ui.style(__l10nStyle("node-stars")).label(stars); }, { align: "center", spacing: 0 }),
           });
         }
       }, { spacing: gap, width: w - 28 });
@@ -213,7 +232,7 @@ function challenges(w: number): void {
       const bw = Math.max(64, tw(T("play"), "btn-primary", "button") + 4);
       const inner = w - 32 - bw - 12 - (best ? 80 : 0);
       ui.column(`ch-t-${c.id}`, () => { para(label!, inner, "text-b"); para(desc!, inner, "dim"); }, { width: inner, spacing: 2 });
-      if (best) ui.style("best").label(T("bestN", { n: best.score }));
+      if (best) ui.style(__l10nStyle("best")).label(T("bestN", { n: best.score }));
       button({ id: `play-${c.id}`, style: "btn-primary", text: T("play"), name: `${T("play")} ${label}`, act: () => startChallenge(c.id) });
     }, { style: "card", width: w, spacing: 12, align: "center" });
   }
@@ -223,8 +242,8 @@ function chase(w: number): void {
   ui.column("chase-panel", () => {
     const inner = w - 44;
     para(T("chaseText"), inner, "text");
-    ui.style("text-b").label(T("seedCode"));
-    const v = ui.style("field").id("chase-seed").textField("chase-seed", app.chaseText, { width: inner, maxChars: 24, placeholder: T("seedPlaceholder") });
+    ui.style(__l10nStyle("text-b")).label(T("seedCode"));
+    const v = ui.style(__l10nStyle("field")).id("chase-seed").textField("chase-seed", app.chaseText, { width: inner, maxChars: 24, placeholder: T("seedPlaceholder") });
     if (v !== app.chaseText) app.chaseText = v;
     const play = (): void => { const s = app.chaseText.trim(); if (s) startChase(s); };
     if (ui.submitted(T("seedCode")) || ui.submitted("chase-seed")) later(play);
@@ -260,10 +279,10 @@ function game(L: Layout): void {
   }
   const moves = leg.movesRemaining !== null ? T("tries", { n: leg.movesRemaining }) : "";
   const chip = (id: string, text: string, warn: boolean, bold = false): void => {
-    ui.row(id, () => ui.style(warn ? "chip-warn-text" : bold ? "chip-text-b" : "chip-text").label(text), { style: warn ? "chip-warn" : "chip", align: "center" });
+    ui.row(id, () => ui.style(__l10nStyle(warn ? "chip-warn-text" : bold ? "chip-text-b" : "chip-text")).label(text), { style: warn ? "chip-warn" : "chip", align: "center" });
   };
   const pauseBtn = (): void => button({ id: "btn-pause", style: "btn-pause", text: "II", name: T("pause"), act: pauseGame, width: 44, height: 44,
-    content: () => ui.style("btn-label-c").label("II") });
+    content: () => ui.style(__l10nStyle("btn-label-c")).label("II") });
   const chips = (): void => {
     if (timerText) chip("hud-timer", timerText, timerWarn);
     if (moves) chip("hud-moves", moves, (leg.movesRemaining ?? 9) <= 2);
@@ -276,7 +295,7 @@ function game(L: Layout): void {
     const r = ui.place("hud", { anchor: "top-start", x: side, y: 8 }, () => ui.column("hud-col", () => {
       pauseBtn();
       para(mode, hudW, "hud-mode");
-      ui.style("hud-progress").label(progress);
+      ui.style(__l10nStyle("hud-progress")).label(progress);
       ui.column("hud-chips", chips, { spacing: 6 });
     }, { spacing: 6, width: hudW }));
     leftEdge = r.x + r.width;
@@ -285,7 +304,7 @@ function game(L: Layout): void {
       pauseBtn();
       const chipsW = (timerText ? tw(timerText, "chip-text") + 28 : 0) + (moves ? tw(moves, "chip-text") + 28 : 0) + tw(String(totalScore(st)), "chip-text-b") + 28 + 16;
       const objW = Math.max(60, hudW - 44 - 16 - chipsW);
-      ui.column("hud-obj", () => { para(mode, objW, "hud-mode"); ui.style("hud-progress").label(progress); }, { width: objW, spacing: 0 });
+      ui.column("hud-obj", () => { para(mode, objW, "hud-mode"); ui.style(__l10nStyle("hud-progress")).label(progress); }, { width: objW, spacing: 0 });
       ui.row("hud-chips", chips, { spacing: 8, align: "center" });
     }, { spacing: 8, width: hudW, align: "center" }));
     hudBottom = r.y + r.height;
@@ -327,8 +346,8 @@ function game(L: Layout): void {
   const wheelW = L.lw - wheelX;
   const tray = ui.place("tray", landscape ? { anchor: "bottom-start", x: wheelX, y: 6 } : { anchor: "bottom", y: 6 }, () => ui.column("tray-col", () => {
     const shaking = app.shakeUntil > nowMs() && !ui.preferences().reducedMotion;
-    ui.row("current-row", () => ui.style(word ? "current-word" : "current-empty").id("current-word").label(word || "···"), { width: wheelW, justify: "center", padding: shaking ? { start: 12 } : undefined });
-    ui.row("feedback-row", () => ui.style(fb ? (fb.kind === "good" ? "feedback-good" : "feedback-error") : "feedback").label(fb ? fb.text : " "), { width: wheelW, justify: "center" });
+    ui.row("current-row", () => ui.style(__l10nStyle(word ? "current-word" : "current-empty")).id("current-word").label(word || "···"), { width: wheelW, justify: "center", padding: shaking ? { start: 12 } : undefined });
+    ui.row("feedback-row", () => ui.style(__l10nStyle(fb ? (fb.kind === "good" ? "feedback-good" : "feedback-error") : "feedback")).label(fb ? fb.text : " "), { width: wheelW, justify: "center" });
     ui.row("wheel-controls", () => { for (const b of ctrls) button(b); }, { spacing: 10, justify: "center", width: wheelW });
     if (bonus) para(bonus, wheelW - 24, "bonus-line");
   }, { spacing: 4, width: wheelW, align: "center" }));
@@ -350,8 +369,8 @@ function game(L: Layout): void {
 }
 function wheelFace(glyph: string, key: string, light: boolean): void {
   ui.column("wf", () => {
-    ui.style(light ? "glyph-light" : "glyph").label(glyph);
-    if (key) ui.style(light ? "kbd-light" : "kbd").label(key);
+    ui.style(__l10nStyle(light ? "glyph-light" : "glyph")).label(glyph);
+    if (key) ui.style(__l10nStyle(light ? "kbd-light" : "kbd")).label(key);
   }, { align: "center", spacing: 0 });
 }
 function tutorialBar(step: number, w: number, landscape: boolean): void {
@@ -386,7 +405,7 @@ function gridView(model: ReturnType<NonNullable<typeof app.session>["gridModel"]
         draw.box(x, y, cell * k, cell * k, cls);
         if (c.revealed) {
           const fs = Math.max(10, cell * 0.5) * k;
-          draw.text(c.letter.toUpperCase(), x + (cell * k) / 2, y + (cell * k - fs) / 2, { size: fs, font: "serif", weight: "bold", align: "center", color: state.highContrast ? "#000000" : foundWord ? "#24301f" : "#4a5a42" });
+          draw.text(c.letter.toUpperCase(), x + (cell * k) / 2, y + (cell * k - fs) / 2, __l10nDrawOptions({ size: fs, font: __l10nFont("serif"), weight: "bold", align: "center", color: state.highContrast ? "#000000" : foundWord ? "#24301f" : "#4a5a42" }));
         }
       }
     },
@@ -404,17 +423,17 @@ function results(L: Layout): void {
       ui.row("rh", () => para(resultsHeadline(sm), inner, "h2", "results-headline"), { width: inner, justify: "center" });
       ui.row("rs", () => para(sm.completed ? T("resultsDone", { words: sm.wordsFound, bonus: sm.bonusFound, time: fmtTime(sm.elapsedSec) })
         : T("resultsPartial", { found: sm.wordsFound, total: sm.totalTargets }), inner, "dim"), { width: inner, justify: "center" });
-      if (sm.mode === "journey" && sm.completed) ui.row("stars", () => ui.style("stars").label("★".repeat(r.stars) + "☆".repeat(3 - r.stars)), { width: inner, justify: "center" });
+      if (sm.mode === "journey" && sm.completed) ui.row("stars", () => ui.style(__l10nStyle("stars")).label("★".repeat(r.stars) + "☆".repeat(3 - r.stars)), { width: inner, justify: "center" });
       const tw2 = Math.min(340, inner);
       ui.column("breakdown", () => {
         for (const row of sm.breakdown) {
           ui.row(`bd-${row.key}`, () => {
-            ui.style("td").label(T("row_" + row.key));
+            ui.style(__l10nStyle("td")).label(T("row_" + row.key));
             ui.spacer();
-            ui.style(row.value < 0 ? "td-neg" : "td-num").label(`${row.value > 0 ? "+" : ""}${row.value}`);
+            ui.style(__l10nStyle(row.value < 0 ? "td-neg" : "td-num")).label(`${row.value > 0 ? "+" : ""}${row.value}`);
           }, { width: tw2 });
         }
-        ui.row("bd-total", () => { ui.style("td-total").label(T("total")); ui.spacer(); ui.style("td-total").id("results-total").label(String(sm.score)); }, { width: tw2, style: "row-line" });
+        ui.row("bd-total", () => { ui.style(__l10nStyle("td-total")).label(T("total")); ui.spacer(); ui.style(__l10nStyle("td-total")).id("results-total").label(String(sm.score)); }, { width: tw2, style: "row-line" });
       }, { width: tw2, spacing: 4 });
       if (r.achievements.length) {
         ui.row("achievements", () => {
@@ -422,7 +441,7 @@ function results(L: Layout): void {
             const def = C.ACHIEVEMENTS.find((a) => a.key === key);
             if (!def) continue;
             const [name] = TN("achievements", key, [def.name, def.desc]);
-            ui.row(`ach-${key}`, () => ui.style("ach-text").label(`🏆 ${name}`), { style: "ach-chip" });
+            ui.row(`ach-${key}`, () => ui.style(__l10nStyle("ach-text")).label(`🏆 ${name}`), { style: "ach-chip" });
           }
         }, { spacing: 8, justify: "center", width: inner });
       }
@@ -440,11 +459,11 @@ function results(L: Layout): void {
 }
 function boardView(label: string, b: Board, w: number): void {
   ui.column(label, () => {
-    ui.style("text-b").label(T(b.titleKey || "boardLocal"));
+    ui.style(__l10nStyle("text-b")).label(T(b.titleKey || "boardLocal"));
     if (!b.entries.length) { para(T("noEntries"), w, "fine"); return; }
     const cols = [28, w - 28 - 70 - 70, 70, 70];
     const rowOf = (id: string, cells: string[], cls: string, me = false): void => {
-      ui.row(id, () => cells.forEach((c, i) => ui.row(`${id}-${i}`, () => ui.style(cls).label(c), { width: cols[i]!, justify: i === 3 ? "end" : "start" })), { width: w, style: me ? "row-me" : undefined });
+      ui.row(id, () => cells.forEach((c, i) => ui.row(`${id}-${i}`, () => ui.style(__l10nStyle(cls)).label(c), { width: cols[i]!, justify: i === 3 ? "end" : "start" })), { width: w, style: me ? "row-me" : undefined });
     };
     rowOf(`${label}-h`, ["#", T("colGardener"), T("colTime"), T("colScore")], "bd-h");
     b.entries.slice(0, 10).forEach((e, i) => rowOf(`${label}-${i}`, [String(i + 1), playerLabel(e.name), e.elapsedSec != null ? fmtTime(e.elapsedSec) : "—", String(e.score)], e.me ? "bd-me" : "bd", !!e.me));
@@ -458,14 +477,14 @@ function overlay(L: Layout): void {
   const w = Math.min(o === "help" ? 640 : 560, L.lw - 24);
   const maxH = L.lh - 24;
   let closed = false;
-  ui.style("panel").dialog(`overlay-${o}`, "", true, () => {
+  ui.style(__l10nStyle("panel")).dialog(`overlay-${o}`, "", true, () => {
     const inner = w - 44;
     const scroll = (build: () => void, h: number): void => {
       ui.scrollArea(`${o}-scroll`, { width: inner + 12, height: Math.max(80, h) }, () => ui.column(`${o}-body`, build, { width: inner, spacing: 8 }),
         app.openedFrame + 6 > frame().frame ? { scrollTo: { top: 0 } } : undefined);
     };
     if (o === "pause") {
-      ui.style("h2").label(T("paused"));
+      ui.style(__l10nStyle("h2")).label(T("paused"));
       const list: [string, string, string, () => void][] = [
         ["overlay-first", "btn-primary", T("resume"), resume],
         ["btn-pause-settings", "btn", T("settings"), () => pauseTo("settings")],
@@ -475,11 +494,11 @@ function overlay(L: Layout): void {
       ];
       for (const [id, st, text, act] of list) button({ id, style: st, text, act, width: inner });
     } else if (o === "settings") {
-      ui.style("h2").label(T("settings"));
+      ui.style(__l10nStyle("h2")).label(T("settings"));
       scroll(() => settingsBody(inner), Math.min(520, maxH - 150));
       button({ id: "btn-settings-close", style: "btn-primary", text: T("done"), act: closeOverlay, width: inner });
     } else if (o === "help") {
-      ui.style("h2").label(T("howToPlay"));
+      ui.style(__l10nStyle("h2")).label(T("howToPlay"));
       scroll(() => {
         const rules: [string, string][] = [["ruleConnect", "ruleConnectText"], ["ruleFill", "ruleFillText"], ["ruleBonus", "ruleBonusText"],
           ["ruleShuffle", "ruleShuffleText"], ["ruleScoring", "ruleScoringText"], ["ruleFair", "ruleFairText"]];
@@ -492,7 +511,7 @@ function overlay(L: Layout): void {
       }, Math.min(560, maxH - 150));
       button({ id: "overlay-first", style: "btn-primary", text: T("close"), act: closeOverlay, width: inner });
     } else if (o === "setup") {
-      ui.style("h2").label(T("practice"));
+      ui.style(__l10nStyle("h2")).label(T("practice"));
       para(T("practiceText"), inner, "text");
       for (const d of C.PRACTICE_DIFFICULTIES) {
         const [label, note] = TN("difficulties", d.id, [d.label, d.note]);
@@ -505,7 +524,7 @@ function overlay(L: Layout): void {
       ], inner, 10);
     } else if (o === "name") {
       para(T("promptName"), inner, "text-b");
-      const v = ui.style("field").id("overlay-first").textField("name-field", app.nameText, { width: inner, maxChars: 20 });
+      const v = ui.style(__l10nStyle("field")).id("overlay-first").textField("name-field", app.nameText, { width: inner, maxChars: 20 });
       if (v !== app.nameText) app.nameText = v;
       if (ui.submitted(T("promptName")) || ui.submitted("name-field")) later(saveName);
       flow("name-actions", [
@@ -526,8 +545,8 @@ function settingsBody(w: number): void {
   const o = platform.options;
   const set = <K extends keyof platform.Options>(k: K) => (v: platform.Options[K]): void => platform.setOption(k, v);
   ui.column("set-runtime", () => {
-    ui.style("text-b").label(T("audio"));
-    button({ id: "overlay-first", style: "btn", text: T("moreOptions"), act: () => openMenu(), width: w - 28 });
+    ui.style(__l10nStyle("text-b")).label(T("audio"));
+    button({ id: "overlay-first", style: "btn", text: T("moreOptions"), act: () => __l10nOptions(), width: w - 28 });
     check("set-captions", T("captions"), o.captions, set("captions"), w - 28);
   }, { style: "fieldset", width: w, spacing: 6 });
   ui.column("set-gfx", () => {
@@ -535,11 +554,11 @@ function settingsBody(w: number): void {
     check("set-timer", T("showTimer"), o.showTimer, set("showTimer"), w - 28);
   }, { style: "fieldset", width: w, spacing: 6 });
   ui.column("set-a11y", () => {
-    ui.style("text-b").label(T("accessibility"));
+    ui.style(__l10nStyle("text-b")).label(T("accessibility"));
     const pals: platform.Palette[] = ["default", "deuteranopia", "protanopia", "tritanopia"];
     const names = [T("palDefault"), T("palDeut"), T("palProt"), T("palTrit")];
     ui.row("pal-row", () => {
-      ui.style("text").label(T("colorPalette"));
+      ui.style(__l10nStyle("text")).label(T("colorPalette"));
       ui.spacer();
       const i = ui.id("set-palette").select(T("colorPalette"), Math.max(0, pals.indexOf(o.palette)), names);
       if (pals[i] !== o.palette && fresh()) later(() => platform.setOption("palette", pals[i]!));
@@ -549,7 +568,7 @@ function settingsBody(w: number): void {
     check("set-haptics", T("haptics"), o.haptics, set("haptics"), w - 28);
   }, { style: "fieldset", width: w, spacing: 6 });
   ui.column("set-game", () => {
-    ui.style("text-b").label(T("game"));
+    ui.style(__l10nStyle("text-b")).label(T("game"));
     button({ id: "btn-replay-tutorial", style: "btn", text: T("replayTutorial"), act: () => { app.overlay = null; startLearn(); } });
     para(keyHelp(), w - 28, "fine");
     para(T("gamepadHelp"), w - 28, "fine");

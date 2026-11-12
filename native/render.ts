@@ -1,3 +1,5 @@
+// localization-runtime:attached
+import { localizedCanvasFont as __l10nCanvasFont } from "./l10n/font.ts";
 // The grove on starhermit:scene, as the browser build's js/render.js drew it
 // with three.js r160: a tranquil procedural glade (sky dome, displaced
 // vertex-coloured ground with grass speckle, a hazy ring of hills, seeded
@@ -126,7 +128,7 @@ function letterTexture(letter: string, color: string): Texture {
   if (t) return t;
   t = canvasTexture(256, (g, size) => {
     g.fillStyle = color;
-    g.font = `700 ${size * 0.52}px serif`;
+    g.font = __l10nCanvasFont(`700 ${size * 0.52}px serif`);
     g.textAlign = "center";
     g.textBaseline = "middle";
     g.fillText(letter.toUpperCase(), size / 2, size * 0.54);

@@ -1,3 +1,4 @@
+import { withLanguageRender as __l10nRender } from "./l10n/menu.ts";
 // Word Grove on the StarHermit engine: the entry module (starhermit.txt
 // engine.entry), played natively by the StarHermit client and in browsers by
 // the engine's web runtime. The rules (js/rules.js), the session
@@ -788,7 +789,7 @@ onUpdate((dt) => {
   if (app.feedback && app.feedback.until <= clockMs) app.feedback = null;
   if (clockMs - snapTimer > 5000) { snapTimer = clockMs; persistSnapshot(); }
 });
-onRender(() => {
+onRender(__l10nRender(() => {
   const wasActive = active();
   const f = frame();
   render.frame(frameDt, f.width, f.height);
@@ -797,6 +798,10 @@ onRender(() => {
     pointerInput(wasActive);
     flushAnnouncements();
   });
-});
+}));
 export function preparingShown(): boolean { return !!app.preparing && clockMs - app.preparing.since > 300; }
 export { legalActions };
+
+// localization-runtime:menu
+import { installLanguageMenu as __installLanguageMenu } from "./l10n/menu.ts";
+__installLanguageMenu(false);
