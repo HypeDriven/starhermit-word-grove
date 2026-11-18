@@ -83,8 +83,7 @@ function flushAnnouncements(): void {
 }
 /** ui.js toast (3.2 s, announced). */
 export function toast(text: string, gold = false): void {
-  app.toasts.push({ text, gold, until: clockMs + 3200 });
-  if (app.toasts.length > 3) app.toasts.shift();
+  ui.toast!(text, { duration: 3.2, position: "top", offset: 60, style: gold ? "toast-gold" : "toast", dismissible: false });
   announce(text);
 }
 /** A widget's press, run once the frame's UI is built. */

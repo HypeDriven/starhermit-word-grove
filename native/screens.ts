@@ -1,3 +1,4 @@
+import { bindings } from "starhermit:input";
 import { localizedStyle as __l10nStyle } from "./l10n/font.ts";
 import { localizedDrawOptions as __l10nDrawOptions } from "./l10n/font.ts";
 // localization-runtime:attached
@@ -105,7 +106,7 @@ function gridOf<X>(label: string, items: X[], width: number, cols: number, gap: 
 }
 
 // ------------------------------------------------------------------ the frame
-export function drawScreens(): void {
+function drawScreensImmediate(): void {
   const L = layoutNow();
   const f = frame();
   if (app.screen === "game") game(L);
@@ -116,7 +117,6 @@ export function drawScreens(): void {
   if (preparingShown()) {
     ui.place("thinking", { anchor: "center" }, () => ui.row("thinking-row", () => ui.style(__l10nStyle("toast-text")).label(T("preparing")), { style: "toast" }));
   }
-  toasts(L);
   if (app.focusNext) {
     const age = f.frame - app.openedFrame;
     if (age >= 1) ui.setFocus(app.focusNext);
@@ -581,11 +581,10 @@ function keyHelp(): string {
   });
 }
 
-// ------------------------------------------------------------------ toasts
-function toasts(L: Layout): void {
-  if (!app.toasts.length) return;
-  const w = Math.min(520, L.lw * 0.92);
-  ui.place("toasts", { anchor: "top", y: 60 }, () => ui.column("toast-col", () => {
-    app.toasts.forEach((t, i) => ui.row(`toast-${i}`, () => para(t.text, w - 40, "toast-text"), { style: t.gold ? "toast-gold" : "toast" }));
-  }, { spacing: 8, align: "center" }));
+
+export function drawScreens(): void {
+  if (!(app.overlay === "help")) { drawScreensImmediate(); return; }
+  const actions = ["submit","delete_letter","cancel","next_letter","prev_letter","pick","shuffle","hint","undo","pause"];
+  const version = JSON.stringify([(app as any).settings ?? (app as any).options ?? {}, (platform as any).options ?? {}, actions.map((action) => bindings(action))]);
+  ui.retain!("help-screen", version, drawScreensImmediate);
 }
